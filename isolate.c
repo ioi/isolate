@@ -18,7 +18,9 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <getopt.h>
+#include <sched.h>
 #include <time.h>
+#include <grp.h>
 #include <sys/wait.h>
 #include <sys/user.h>
 #include <sys/time.h>
@@ -26,10 +28,17 @@
 #include <sys/signal.h>
 #include <sys/sysinfo.h>
 #include <sys/resource.h>
+#include <sys/mount.h>
+#include <sys/stat.h>
 
 #define NONRET __attribute__((noreturn))
 #define UNUSED __attribute__((unused))
 #define ARRAY_SIZE(a) (int)(sizeof(a)/sizeof(a[0]))
+
+// FIXME: Make configurable, probably in compile time
+#define BOX_DIR "/tmp/box"
+#define BOX_UID 60000
+#define BOX_GID 60000
 
 static int timeout;			/* milliseconds */
 static int wall_timeout;
@@ -461,7 +470,7 @@ sample_mem_peak(void)
 }
 
 static void
-boxkeeper(void)
+box_keeper(void)
 {
   struct sigaction sa;
 
@@ -491,7 +500,7 @@ boxkeeper(void)
 	  check_timeout();
 	  timer_tick = 0;
 	}
-      p = wait4(box_pid, &stat, WUNTRACED, &rus);
+      p = wait4(box_pid, &stat, 0, &rus);
       if (p < 0)
 	{
 	  if (errno == EINTR)
@@ -541,15 +550,68 @@ boxkeeper(void)
 }
 
 static void
-box_inside(int argc, char **argv)
+setup_root(void)
 {
+  umask(0022);
+
+  if (mkdir("root", 0777) < 0 && errno != EEXIST)
+    die("mkdir('root'): %m");
+
+  if (mount("none", "root", "tmpfs", 0, "mode=755") < 0)
+    die("Cannot mount root ramdisk: %m");
+
+  // FIXME: Make the list of bind-mounts configurable
+  // FIXME: Virtual dev?
+  // FIXME: Read-only mounts?
+
+  static const char * const dirs[] = { "box", "/bin", "/lib", "/usr", "/dev" };
+  for (int i=0; i < ARRAY_SIZE(dirs); i++)
+    {
+      const char *d = dirs[i];
+      char buf[1024];	// FIXME
+      sprintf(buf, "root/%s", (d[0] == '/' ? d+1 : d));
+      printf("Binding %s on %s\n", d, buf);
+      if (mkdir(buf, 0777) < 0)
+	die("mkdir(%s): %m", buf);
+      if (mount(d, buf, "none", MS_BIND | MS_NOSUID | MS_NODEV, "") < 0)
+	die("Cannot bind %s on %s: %m", d, buf);
+    }
+
+  if (mkdir("root/proc", 0777) < 0)
+    die("Cannot create proc: %m");
+  if (mount("none", "root/proc", "proc", 0, "") < 0)
+    die("Cannot mount proc: %m");
+
+  if (chroot("root") < 0)
+    die("Chroot failed: %m");
+
+  if (chdir("root/box") < 0)
+    die("Cannot change current directory: %m");
+}
+
+static int
+box_inside(void *arg)
+{
+  char **argv = arg;
+  int argc = 0;
+  while (argv[argc])
+    argc++;
+
   struct rlimit rl;
   char *args[argc+1];
 
   memcpy(args, argv, argc * sizeof(char *));
   args[argc] = NULL;
-  if (set_cwd && chdir(set_cwd))
-    die("chdir: %m");
+
+  setup_root();
+
+  if (setresgid(BOX_GID, BOX_GID, BOX_GID) < 0)
+    die("setresgid: %m");
+  if (setgroups(0, NULL) < 0)
+    die("setgroups: %m");
+  if (setresuid(BOX_UID, BOX_UID, BOX_UID) < 0)
+    die("setresuid: %m");
+
   if (redir_stdin)
     {
       close(0);
@@ -587,12 +649,64 @@ box_inside(int argc, char **argv)
   if (setrlimit(RLIMIT_NOFILE, &rl) < 0)
     die("setrlimit(RLIMIT_NOFILE): %m");
 
+  // FIXME: Create multi-process mode
+  rl.rlim_cur = rl.rlim_max = 1;
+  if (setrlimit(RLIMIT_NPROC, &rl) < 0)
+    die("setrlimit(RLIMIT_NPROC): %m");
+
+  rl.rlim_cur = rl.rlim_max = 0;
+  if (setrlimit(RLIMIT_MEMLOCK, &rl) < 0)
+    die("setrlimit(RLIMIT_MEMLOCK): %m");
+
   char **env = setup_environment();
   execve(args[0], args, env);
   die("execve(\"%s\"): %m", args[0]);
 }
 
-// FIXME: Prune (and also the getopt string)
+static void
+prepare(void)
+{
+  // FIXME: Move chdir to common code?
+  if (chdir(BOX_DIR) < 0)
+    die("chdir(%s): %m", BOX_DIR);
+
+  if (system("./prepare"))
+    die("Prepare hook failed");
+}
+
+static void
+cleanup(void)
+{
+  if (chdir(BOX_DIR) < 0)
+    die("chdir(%s): %m", BOX_DIR);
+
+  if (system("./cleanup"))
+    die("Prepare hook failed");
+}
+
+static void
+run(char **argv)
+{
+  if (chdir(BOX_DIR) < 0)
+    die("chdir(%s): %m", BOX_DIR);
+
+  struct stat st;
+  if (stat("box", &st) < 0 || !S_ISDIR(st.st_mode))
+    die("Box directory not found, did you run `isolate --prepare'?");
+
+  box_pid = clone(
+    box_inside,			// Function to execute as the body of the new process
+    argv,			// Pass our stack
+    SIGCHLD | CLONE_NEWIPC | CLONE_NEWNET | CLONE_NEWNS | CLONE_NEWPID,
+    argv);			// Pass the arguments
+  if (box_pid < 0)
+    die("clone: %m");
+  if (!box_pid)
+    die("clone returned 0");
+  box_keeper();
+}
+
+// FIXME: Prune (and also the option list)
 static void
 usage(void)
 {
@@ -627,13 +741,28 @@ Options:\n\
   exit(2);
 }
 
+enum opt_code {
+  OPT_PREPARE,
+  OPT_RUN,
+  OPT_CLEANUP,
+};
+
+static const char short_opts[] = "a:c:eE:fi:k:m:M:o:p:r:s:t:Tvw:x:";
+
+static const struct option long_opts[] = {
+  { "prepare",		0, NULL, OPT_PREPARE },
+  { "run",		0, NULL, OPT_RUN },
+  { "cleanup",		0, NULL, OPT_CLEANUP },
+  { NULL,		0, NULL, 0 }
+};
+
 int
 main(int argc, char **argv)
 {
   int c;
-  uid_t uid;
+  enum opt_code mode = 0;
 
-  while ((c = getopt(argc, argv, "a:c:eE:fi:k:m:M:o:p:r:s:t:Tvw:x:")) >= 0)
+  while ((c = getopt_long(argc, argv, short_opts, long_opts, NULL)) >= 0)
     switch (c)
       {
       case 'c':
@@ -671,26 +800,44 @@ main(int argc, char **argv)
 	verbose++;
 	break;
       case 'w':
-        wall_timeout = 1000*atof(optarg);
+	wall_timeout = 1000*atof(optarg);
 	break;
       case 'x':
 	extra_timeout = 1000*atof(optarg);
 	break;
+      case OPT_PREPARE:
+      case OPT_RUN:
+      case OPT_CLEANUP:
+	mode = c;
+	break;
       default:
 	usage();
       }
-  if (optind >= argc)
-    usage();
 
-  uid = geteuid();
-  if (setreuid(uid, uid) < 0)
-    die("setreuid: %m");
-  box_pid = fork();
-  if (box_pid < 0)
-    die("fork: %m");
-  if (!box_pid)
-    box_inside(argc-optind, argv+optind);
-  else
-    boxkeeper();
-  die("Internal error: fell over edge of the world");
+  if (geteuid())
+    die("Must be started as root");
+
+  // FIXME: Copying of files into the box
+
+  switch (mode)
+    {
+    case OPT_PREPARE:
+      if (optind < argc)
+	usage();
+      prepare();
+      break;
+    case OPT_RUN:
+      if (optind >= argc)
+	usage();
+      run(argv+optind);
+      break;
+    case OPT_CLEANUP:
+      if (optind < argc)
+	usage();
+      cleanup();
+      break;
+    default:
+      die("Internal error: mode mismatch");
+    }
+  exit(0);
 }

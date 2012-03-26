@@ -1,0 +1,10 @@
+#!/bin/sh
+
+echo >&2 "Preparing sandbox work directory"
+rm -rf box
+mkdir box
+
+# FIXME: Make configurable
+chown 60000 box
+chgrp users box
+chmod 770 box
