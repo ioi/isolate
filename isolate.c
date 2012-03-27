@@ -48,19 +48,20 @@ static int verbose;
 static int memory_limit;
 static int stack_limit;
 static char *redir_stdin, *redir_stdout, *redir_stderr;
-static char *set_cwd;
+
+static uid_t orig_uid;
+static gid_t orig_gid;
 
 static pid_t box_pid;
-static volatile int timer_tick;
+static volatile sig_atomic_t timer_tick;
 static struct timeval start_time;
 static int ticks_per_sec;
 static int partial_line;
+static char cleanup_cmd[256];
 
-static int mem_peak_kb;
 static int total_ms, wall_ms;
 
 static void die(char *msg, ...) NONRET;
-static void sample_mem_peak(void);
 
 /*** Meta-files ***/
 
@@ -110,17 +111,25 @@ final_stats(struct rusage *rus)
 
   meta_printf("time:%d.%03d\n", total_ms/1000, total_ms%1000);
   meta_printf("time-wall:%d.%03d\n", wall_ms/1000, wall_ms%1000);
-  meta_printf("mem:%llu\n", (unsigned long long) mem_peak_kb * 1024);
 }
 
 /*** Messages and exits ***/
+
+static void
+xsystem(const char *cmd)
+{
+  int ret = system(cmd);
+  if (ret < 0)
+    die("system(\"%s\"): %m", cmd);
+  if (!WIFEXITED(ret) || WEXITSTATUS(ret))
+    die("system(\"%s\"): Exited with status %d", cmd, ret);
+}
 
 static void NONRET
 box_exit(int rc)
 {
   if (box_pid > 0)
     {
-      sample_mem_peak();
       kill(-box_pid, SIGKILL);
       kill(box_pid, SIGKILL);
       meta_printf("killed:1\n");
@@ -135,6 +144,10 @@ box_exit(int rc)
       else
 	final_stats(&rus);
     }
+
+  if (rc < 2 && cleanup_cmd[0])
+    xsystem(cleanup_cmd);
+
   meta_close();
   exit(rc);
 }
@@ -343,7 +356,7 @@ setup_environment(void)
   return env;
 }
 
-/*** FIXME ***/
+/*** The keeper process ***/
 
 static void
 signal_alarm(int unused UNUSED)
@@ -425,51 +438,6 @@ check_timeout(void)
 }
 
 static void
-sample_mem_peak(void)
-{
-  /*
-   *  We want to find out the peak memory usage of the process, which is
-   *  maintained by the kernel, but unforunately it gets lost when the
-   *  process exits (it is not reported in struct rusage). Therefore we
-   *  have to sample it whenever we suspect that the process is about
-   *  to exit.
-   */
-  char buf[PROC_BUF_SIZE], *x;
-  static int proc_status_fd;
-  read_proc_file(buf, "status", &proc_status_fd);
-
-  x = buf;
-  while (*x)
-    {
-      char *key = x;
-      while (*x && *x != ':' && *x != '\n')
-	x++;
-      if (!*x || *x == '\n')
-	break;
-      *x++ = 0;
-      while (*x == ' ' || *x == '\t')
-	x++;
-
-      char *val = x;
-      while (*x && *x != '\n')
-	x++;
-      if (!*x)
-	break;
-      *x++ = 0;
-
-      if (!strcmp(key, "VmPeak"))
-	{
-	  int peak = atoi(val);
-	  if (peak > mem_peak_kb)
-	    mem_peak_kb = peak;
-	}
-    }
-
-  if (verbose > 1)
-    msg("[mem-peak: %u KB]\n", mem_peak_kb);
-}
-
-static void
 box_keeper(void)
 {
   struct sigaction sa;
@@ -524,10 +492,9 @@ box_keeper(void)
 	  if (wall_timeout && wall_ms > wall_timeout)
 	    err("TO: Time limit exceeded (wall clock)");
 	  flush_line();
-	  fprintf(stderr, "OK (%d.%03d sec real, %d.%03d sec wall, %d MB)\n",
+	  fprintf(stderr, "OK (%d.%03d sec real, %d.%03d sec wall)\n",
 	      total_ms/1000, total_ms%1000,
-	      wall_ms/1000, wall_ms%1000,
-	      (mem_peak_kb + 1023) / 1024);
+	      wall_ms/1000, wall_ms%1000);
 	  box_exit(0);
 	}
       if (WIFSIGNALED(stat))
@@ -549,10 +516,12 @@ box_keeper(void)
     }
 }
 
+/*** The process running inside the box ***/
+
 static void
 setup_root(void)
 {
-  umask(0022);
+  umask(0027);
 
   if (mkdir("root", 0777) < 0 && errno != EEXIST)
     die("mkdir('root'): %m");
@@ -561,7 +530,7 @@ setup_root(void)
     die("Cannot mount root ramdisk: %m");
 
   // FIXME: Make the list of bind-mounts configurable
-  // FIXME: Virtual dev?
+  // FIXME: Virtual /dev?
   // FIXME: Read-only mounts?
 
   static const char * const dirs[] = { "box", "/bin", "/lib", "/usr", "/dev" };
@@ -570,7 +539,7 @@ setup_root(void)
       const char *d = dirs[i];
       char buf[1024];	// FIXME
       sprintf(buf, "root/%s", (d[0] == '/' ? d+1 : d));
-      printf("Binding %s on %s\n", d, buf);
+      msg("Binding %s on %s\n", d, buf);
       if (mkdir(buf, 0777) < 0)
 	die("mkdir(%s): %m", buf);
       if (mount(d, buf, "none", MS_BIND | MS_NOSUID | MS_NODEV, "") < 0)
@@ -666,33 +635,32 @@ box_inside(void *arg)
 static void
 prepare(void)
 {
-  // FIXME: Move chdir to common code?
-  if (chdir(BOX_DIR) < 0)
-    die("chdir(%s): %m", BOX_DIR);
-
-  if (system("./prepare"))
-    die("Prepare hook failed");
+  msg("Preparing sandbox directory\n");
+  xsystem("rm -rf box");
+  if (mkdir("box", 0700) < 0)
+    die("Cannot create box: %m");
+  if (chown("box", orig_uid, orig_gid) < 0)
+    die("Cannot chown box: %m");
 }
 
 static void
 cleanup(void)
 {
-  if (chdir(BOX_DIR) < 0)
-    die("chdir(%s): %m", BOX_DIR);
-
-  if (system("./cleanup"))
-    die("Prepare hook failed");
+  msg("Deleting sandbox directory\n");
+  xsystem("rm -rf box");
 }
 
 static void
 run(char **argv)
 {
-  if (chdir(BOX_DIR) < 0)
-    die("chdir(%s): %m", BOX_DIR);
-
   struct stat st;
   if (stat("box", &st) < 0 || !S_ISDIR(st.st_mode))
     die("Box directory not found, did you run `isolate --prepare'?");
+
+  char cmd[256];
+  snprintf(cmd, sizeof(cmd), "chown -R %d.%d box", BOX_UID, BOX_GID);
+  xsystem(cmd);
+  snprintf(cleanup_cmd, sizeof(cleanup_cmd), "chown -R %d.%d box", orig_uid, orig_gid);
 
   box_pid = clone(
     box_inside,			// Function to execute as the body of the new process
@@ -706,53 +674,74 @@ run(char **argv)
   box_keeper();
 }
 
-// FIXME: Prune (and also the option list)
+static void
+show_version(void)
+{
+  // FIXME
+  printf("Process isolator 0.0\n");
+  printf("(c) 2012 Martin Mares <mj@ucw.cz>\n\n");
+  printf("Sandbox directory: %s\n", BOX_DIR);
+  printf("Sandbox credentials: uid=%u gid=%u\n", BOX_UID, BOX_GID);
+}
+
 static void
 usage(void)
 {
   fprintf(stderr, "Invalid arguments!\n");
   printf("\
-Usage: box [<options>] -- <command> <arguments>\n\
+Usage: isolate [<options>] <command>\n\
 \n\
 Options:\n\
--a <level>\tSet file access level (0=none, 1=cwd, 2=/etc,/lib,..., 3=whole fs, 9=no checks; needs -f)\n\
--c <dir>\tChange directory to <dir> first\n\
--e\t\tInherit full environment of the parent process\n\
--E <var>\tInherit the environment variable <var> from the parent process\n\
--E <var>=<val>\tSet the environment variable <var> to <val>; unset it if <var> is empty\n\
--f\t\tFilter system calls (-ff=very restricted)\n\
--i <file>\tRedirect stdin from <file>\n\
--k <size>\tLimit stack size to <size> KB (default: 0=unlimited)\n\
--m <size>\tLimit address space to <size> KB\n\
--M <file>\tOutput process information to <file> (name:value)\n\
--o <file>\tRedirect stdout to <file>\n\
--p <path>\tPermit access to the specified path (or subtree if it ends with a `/')\n\
--p <path>=<act>\tDefine action for the specified path (<act>=yes/no)\n\
--r <file>\tRedirect stderr to <file>\n\
--s <sys>\tPermit the specified syscall (be careful)\n\
--s <sys>=<act>\tDefine action for the specified syscall (<act>=yes/no/file)\n\
--t <time>\tSet run time limit (seconds, fractions allowed)\n\
--T\t\tAllow syscalls for measuring run time\n\
--v\t\tBe verbose (use multiple times for even more verbosity)\n\
--w <time>\tSet wall clock time limit (seconds, fractions allowed)\n\
--x <time>\tSet extra timeout, before which a timing-out program is not yet killed,\n\
-\t\tso that its real execution time is reported (seconds, fractions allowed)\n\
+-e, --full-env\t\tInherit full environment of the parent process\n\
+-E, --env=<var>\tInherit the environment variable <var> from the parent process\n\
+-E, --env=<var>=<val>\tSet the environment variable <var> to <val>; unset it if <var> is empty\n\
+-i, --stdin=<file>\tRedirect stdin from <file>\n\
+-k, --stack=<size>\tLimit stack size to <size> KB (default: 0=unlimited)\n\
+-m, --mem=<size>\tLimit address space to <size> KB\n\
+-M, --meta=<file>\tOutput process information to <file> (name:value)\n\
+-o, --stdout=<file>\tRedirect stdout to <file>\n\
+-r, --stderr=<file>\tRedirect stderr to <file>\n\
+-t, --time=<time>\tSet run time limit (seconds, fractions allowed)\n\
+-v, --verbose\t\tBe verbose (use multiple times for even more verbosity)\n\
+-w, --wall-time=<time>\tSet wall clock time limit (seconds, fractions allowed)\n\
+-x, --extra-time=<time>\tSet extra timeout, before which a timing-out program is not yet killed,\n\
+\t\t\tso that its real execution time is reported (seconds, fractions allowed)\n\
+\n\
+Commands:\n\
+    --prepare\t\tInitialize sandbox\n\
+    --run -- <cmd> ...\tRun given command within sandbox\n\
+    --cleanup\t\tClean up sandbox\n\
+    --version\t\tDisplay program version and configuration\n\
 ");
   exit(2);
 }
 
 enum opt_code {
-  OPT_PREPARE,
+  OPT_PREPARE = 256,
   OPT_RUN,
   OPT_CLEANUP,
+  OPT_VERSION,
 };
 
-static const char short_opts[] = "a:c:eE:fi:k:m:M:o:p:r:s:t:Tvw:x:";
+static const char short_opts[] = "eE:i:k:m:M:o:r:t:vw:x:";
 
 static const struct option long_opts[] = {
+  { "full-env",		0, NULL, 'e' },
+  { "env",		1, NULL, 'E' },
+  { "stdin",		1, NULL, 'i' },
+  { "stack",		1, NULL, 'k' },
+  { "mem",		1, NULL, 'm' },
+  { "meta",		1, NULL, 'M' },
+  { "stdout",		1, NULL, 'o' },
+  { "stderr",		1, NULL, 'r' },
+  { "time",		1, NULL, 't' },
+  { "verbose",		0, NULL, 'v' },
+  { "wall-time",	1, NULL, 'w' },
+  { "extra-time",	1, NULL, 'x' },
   { "prepare",		0, NULL, OPT_PREPARE },
   { "run",		0, NULL, OPT_RUN },
   { "cleanup",		0, NULL, OPT_CLEANUP },
+  { "version",		0, NULL, OPT_VERSION },
   { NULL,		0, NULL, 0 }
 };
 
@@ -765,9 +754,6 @@ main(int argc, char **argv)
   while ((c = getopt_long(argc, argv, short_opts, long_opts, NULL)) >= 0)
     switch (c)
       {
-      case 'c':
-	set_cwd = optarg;
-	break;
       case 'e':
 	pass_environ = 1;
 	break;
@@ -808,16 +794,28 @@ main(int argc, char **argv)
       case OPT_PREPARE:
       case OPT_RUN:
       case OPT_CLEANUP:
+      case OPT_VERSION:
 	mode = c;
 	break;
       default:
 	usage();
       }
 
+  if (!mode)
+    usage();
+  if (mode == OPT_VERSION)
+    {
+      show_version();
+      return 0;
+    }
+
   if (geteuid())
     die("Must be started as root");
+  orig_uid = getuid();
+  orig_gid = getgid();
 
-  // FIXME: Copying of files into the box
+  if (chdir(BOX_DIR) < 0)
+    die("chdir(%s): %m", BOX_DIR);
 
   switch (mode)
     {

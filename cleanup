@@ -1,4 +1,0 @@
-#!/bin/sh
-
-echo >&2 "Cleaning up sandbox work directory"
-rm -rf box
