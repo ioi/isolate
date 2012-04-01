@@ -789,33 +789,21 @@ setup_root(void)
     die("Cannot change current directory: %m");
 }
 
-static int
-box_inside(void *arg)
+static void
+setup_credentials(void)
 {
-  write_errors_to_fd = error_pipes[1];
-  close(error_pipes[0]);
-
-  char **argv = arg;
-  int argc = 0;
-  while (argv[argc])
-    argc++;
-
-  struct rlimit rl;
-  char *args[argc+1];
-
-  memcpy(args, argv, argc * sizeof(char *));
-  args[argc] = NULL;
-
-  cg_enter();
-  setup_root();
-
   if (setresgid(BOX_GID, BOX_GID, BOX_GID) < 0)
     die("setresgid: %m");
   if (setgroups(0, NULL) < 0)
     die("setgroups: %m");
   if (setresuid(BOX_UID, BOX_UID, BOX_UID) < 0)
     die("setresuid: %m");
+  setpgrp();
+}
 
+static void
+setup_fds(void)
+{
   if (redir_stdin)
     {
       close(0);
@@ -836,35 +824,48 @@ box_inside(void *arg)
     }
   else
     dup2(1, 2);
-  setpgrp();
+}
+
+static void
+setup_rlim(const char *res_name, int res, rlim_t limit)
+{
+  struct rlimit rl = { .rlim_cur = limit, .rlim_max = limit };
+  if (setrlimit(res, &rl) < 0)
+    die("setrlimit(%s, %jd)", res_name, (intmax_t) limit);
+}
+
+static void
+setup_rlimits(void)
+{
+#define RLIM(res, val) setup_rlim("RLIMIT_" #res, RLIMIT_##res, val)
 
   if (memory_limit)
-    {
-      rl.rlim_cur = rl.rlim_max = memory_limit * 1024;
-      if (setrlimit(RLIMIT_AS, &rl) < 0)
-	die("setrlimit(RLIMIT_AS): %m");
-    }
+    RLIM(AS, memory_limit * 1024);
 
-  rl.rlim_cur = rl.rlim_max = (stack_limit ? (rlim_t)stack_limit * 1024 : RLIM_INFINITY);
-  if (setrlimit(RLIMIT_STACK, &rl) < 0)
-    die("setrlimit(RLIMIT_STACK): %m");
-
-  rl.rlim_cur = rl.rlim_max = 64;
-  if (setrlimit(RLIMIT_NOFILE, &rl) < 0)
-    die("setrlimit(RLIMIT_NOFILE): %m");
+  RLIM(STACK, (stack_limit ? (rlim_t)stack_limit * 1024 : RLIM_INFINITY));
+  RLIM(NOFILE, 64);
+  RLIM(MEMLOCK, 0);
 
   if (max_processes)
-    {
-      rl.rlim_cur = rl.rlim_max = max_processes;
-      if (setrlimit(RLIMIT_NPROC, &rl) < 0)
-	die("setrlimit(RLIMIT_NPROC): %m");
-    }
+    RLIM(NPROC, max_processes);
 
-  rl.rlim_cur = rl.rlim_max = 0;
-  if (setrlimit(RLIMIT_MEMLOCK, &rl) < 0)
-    die("setrlimit(RLIMIT_MEMLOCK): %m");
+#undef RLIM
+}
 
+static int
+box_inside(void *arg)
+{
+  char **args = arg;
+  write_errors_to_fd = error_pipes[1];
+  close(error_pipes[0]);
+
+  cg_enter();
+  setup_root();
+  setup_credentials();
+  setup_fds();
+  setup_rlimits();
   char **env = setup_environment();
+
   execve(args[0], args, env);
   die("execve(\"%s\"): %m", args[0]);
 }
