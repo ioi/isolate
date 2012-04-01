@@ -8,7 +8,6 @@
 
 #include "autoconf.h"
 
-// FIXME: prune
 #include <errno.h>
 #include <stdio.h>
 #include <fcntl.h>
@@ -22,11 +21,8 @@
 #include <time.h>
 #include <grp.h>
 #include <sys/wait.h>
-#include <sys/user.h>
 #include <sys/time.h>
-#include <sys/ptrace.h>
 #include <sys/signal.h>
-#include <sys/sysinfo.h>
 #include <sys/resource.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
@@ -59,13 +55,17 @@ static uid_t orig_uid;
 static gid_t orig_gid;
 
 static pid_t box_pid;
-static volatile sig_atomic_t timer_tick;
-static struct timeval start_time;
-static int ticks_per_sec;
 static int partial_line;
 static char cleanup_cmd[256];
 
+static struct timeval start_time;
+static int ticks_per_sec;
 static int total_ms, wall_ms;
+static volatile sig_atomic_t timer_tick;
+
+static int error_pipes[2];
+static int write_errors_to_fd;
+static int read_errors_from_fd;
 
 static void die(char *msg, ...) NONRET;
 static void cg_stats(void);
@@ -176,9 +176,19 @@ die(char *msg, ...)
 {
   va_list args;
   va_start(args, msg);
-  flush_line();
   char buf[1024];
-  vsnprintf(buf, sizeof(buf), msg, args);
+  int n = vsnprintf(buf, sizeof(buf), msg, args);
+
+  if (write_errors_to_fd)
+    {
+      // We are inside the box, have to use error pipe for error reporting.
+      // We hope that the whole error message fits in PIPE_BUF bytes.
+      write(write_errors_to_fd, buf, n);
+      exit(2);
+    }
+
+  // Otherwise, we in the box keeper process, so we report errors normally
+  flush_line();
   meta_printf("status:XX\nmessage:%s\n", buf);
   fputs(buf, stderr);
   fputc('\n', stderr);
@@ -550,9 +560,6 @@ cg_remove(void)
   if (buf[0])
     die("Some tasks left in control group %s, failed to remove it", cg_path);
 
-  // FIXME: Is this needed?
-  // cg_write("memory.force_empty", "0\n");
-
   if (rmdir(cg_path) < 0)
     die("Cannot remove control group %s: %m", cg_path);
 }
@@ -657,8 +664,10 @@ check_timeout(void)
 static void
 box_keeper(void)
 {
-  struct sigaction sa;
+  read_errors_from_fd = error_pipes[0];
+  close(error_pipes[1]);
 
+  struct sigaction sa;
   bzero(&sa, sizeof(sa));
   sa.sa_handler = signal_int;
   sigaction(SIGINT, &sa, NULL);
@@ -694,13 +703,22 @@ box_keeper(void)
 	}
       if (p != box_pid)
 	die("wait4: unknown pid %d exited!", p);
+      box_pid = 0;
+
+      // Check error pipe if there is an internal error passed from inside the box
+      char interr[1024];
+      int n = read(read_errors_from_fd, interr, sizeof(interr) - 1);
+      if (n > 0)
+	{
+	  interr[n] = 0;
+	  die("%s", interr);
+	}
+
       if (WIFEXITED(stat))
 	{
-	  box_pid = 0;
 	  final_stats(&rus);
 	  if (WEXITSTATUS(stat))
 	    {
-	      // FIXME: Recognize internal errors during setup
 	      meta_printf("exitcode:%d\n", WEXITSTATUS(stat));
 	      err("RE: Exited with error status %d", WEXITSTATUS(stat));
 	    }
@@ -714,16 +732,14 @@ box_keeper(void)
 	      wall_ms/1000, wall_ms%1000);
 	  box_exit(0);
 	}
-      if (WIFSIGNALED(stat))
+      else if (WIFSIGNALED(stat))
 	{
-	  box_pid = 0;
 	  meta_printf("exitsig:%d\n", WTERMSIG(stat));
 	  final_stats(&rus);
 	  err("SG: Caught fatal signal %d", WTERMSIG(stat));
 	}
-      if (WIFSTOPPED(stat))
+      else if (WIFSTOPPED(stat))
 	{
-	  box_pid = 0;
 	  meta_printf("exitsig:%d\n", WSTOPSIG(stat));
 	  final_stats(&rus);
 	  err("SG: Stopped by signal %d", WSTOPSIG(stat));
@@ -776,6 +792,9 @@ setup_root(void)
 static int
 box_inside(void *arg)
 {
+  write_errors_to_fd = error_pipes[1];
+  close(error_pipes[0]);
+
   char **argv = arg;
   int argc = 0;
   while (argv[argc])
@@ -886,6 +905,13 @@ run(char **argv)
   snprintf(cmd, sizeof(cmd), "chown -R %d.%d box", BOX_UID, BOX_GID);
   xsystem(cmd);
   snprintf(cleanup_cmd, sizeof(cleanup_cmd), "chown -R %d.%d box", orig_uid, orig_gid);
+
+  if (pipe(error_pipes) < 0)
+    die("pipe: %m");
+  for (int i=0; i<2; i++)
+    if (fcntl(error_pipes[i], F_SETFD, fcntl(error_pipes[i], F_GETFD) | FD_CLOEXEC) < 0 ||
+        fcntl(error_pipes[i], F_SETFL, fcntl(error_pipes[i], F_GETFL) | O_NONBLOCK) < 0)
+      die("fcntl on pipe: %m");
 
   box_pid = clone(
     box_inside,			// Function to execute as the body of the new process
