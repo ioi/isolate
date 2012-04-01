@@ -926,9 +926,9 @@ run(char **argv)
 static void
 show_version(void)
 {
-  // FIXME
-  printf("Process isolator 0.0\n");
-  printf("(c) 2012 Martin Mares <mj@ucw.cz>\n\n");
+  printf("Process isolator 1.0\n");
+  printf("(c) 2012 Martin Mares and Bernard Blackham\n");
+  printf("\nCompile-time configuration:\n");
   printf("Sandbox directory: %s\n", BOX_DIR);
   printf("Sandbox credentials: uid=%u gid=%u\n", BOX_UID, BOX_GID);
 }
