@@ -47,7 +47,13 @@ static int pass_environ;
 static int verbose;
 static int memory_limit;
 static int stack_limit;
+static int max_processes = 1;
 static char *redir_stdin, *redir_stdout, *redir_stderr;
+
+static int cg_enable;
+static int cg_memory_limit;
+static int cg_timing;
+static char *cg_root = "/sys/fs/cgroup";
 
 static uid_t orig_uid;
 static gid_t orig_gid;
@@ -62,6 +68,9 @@ static char cleanup_cmd[256];
 static int total_ms, wall_ms;
 
 static void die(char *msg, ...) NONRET;
+static void cg_stats(void);
+static int get_wall_time_ms(void);
+static int get_run_time_ms(void);
 
 /*** Meta-files ***/
 
@@ -102,15 +111,16 @@ meta_printf(const char *fmt, ...)
 static void
 final_stats(struct rusage *rus)
 {
-  struct timeval total, now, wall;
-  timeradd(&rus->ru_utime, &rus->ru_stime, &total);
-  total_ms = total.tv_sec*1000 + total.tv_usec/1000;
-  gettimeofday(&now, NULL);
-  timersub(&now, &start_time, &wall);
-  wall_ms = wall.tv_sec*1000 + wall.tv_usec/1000;
+  total_ms = get_run_time_ms();
+  wall_ms = get_wall_time_ms();
 
   meta_printf("time:%d.%03d\n", total_ms/1000, total_ms%1000);
   meta_printf("time-wall:%d.%03d\n", wall_ms/1000, wall_ms%1000);
+  meta_printf("max-rss:%ld\n", rus->ru_maxrss);
+  meta_printf("csw-voluntary:%ld\n", rus->ru_nvcsw);
+  meta_printf("csw-forced:%ld\n", rus->ru_nivcsw);
+
+  cg_stats();
 }
 
 /*** Messages and exits ***/
@@ -356,6 +366,197 @@ setup_environment(void)
   return env;
 }
 
+/*** Control groups ***/
+
+static char cg_path[256];
+
+#define CG_BUFSIZE 1024
+
+static int
+cg_read(char *attr, char *buf)
+{
+  int maybe = 0;
+  if (attr[0] == '?')
+    {
+      attr++;
+      maybe = 1;
+    }
+
+  char path[256];
+  snprintf(path, sizeof(path), "%s/%s", cg_path, attr);
+
+  int fd = open(path, O_RDONLY);
+  if (fd < 0)
+    {
+      if (maybe)
+	return 0;
+      die("Cannot read %s: %m", path);
+    }
+
+  int n = read(fd, buf, CG_BUFSIZE);
+  if (n < 0)
+    die("Cannot read %s: %m", path);
+  if (n >= CG_BUFSIZE - 1)
+    die("Attribute %s too long", path);
+  if (n > 0 && buf[n-1] == '\n')
+    n--;
+  buf[n] = 0;
+
+  if (verbose > 1)
+    msg("CG: Read %s = %s\n", attr, buf);
+
+  close(fd);
+  return 1;
+}
+
+static void __attribute__((format(printf,2,3)))
+cg_write(char *attr, char *fmt, ...)
+{
+  va_list args;
+  va_start(args, fmt);
+
+  char buf[CG_BUFSIZE];
+  int n = vsnprintf(buf, sizeof(buf), fmt, args);
+  if (n >= CG_BUFSIZE)
+    die("cg_writef: Value for attribute %s is too long", attr);
+
+  if (verbose > 1)
+    msg("CG: Write %s = %s", attr, buf);
+
+  char path[256];
+  snprintf(path, sizeof(path), "%s/%s", cg_path, attr);
+
+  int fd = open(path, O_WRONLY | O_TRUNC);
+  if (fd < 0)
+    die("Cannot write %s: %m", path);
+
+  int written = write(fd, buf, n);
+  if (written < 0)
+    die("Cannot set %s to %s: %m", path, buf);
+  if (written != n)
+    die("Short write to %s (%d out of %d bytes)", path, written, n);
+
+  close(fd);
+  va_end(args);
+}
+
+static void
+cg_init(void)
+{
+  if (!cg_enable)
+    return;
+
+  struct stat st;
+  if (stat(cg_root, &st) < 0 || !S_ISDIR(st.st_mode))
+    die("Control group filesystem at %s not mounted", cg_root);
+
+  snprintf(cg_path, sizeof(cg_path), "%s/box-%d", cg_root, BOX_UID);
+  msg("Using control group %s\n", cg_path);
+}
+
+static void
+cg_prepare(void)
+{
+  if (!cg_enable)
+    return;
+
+  struct stat st;
+  char buf[CG_BUFSIZE];
+
+  if (stat(cg_path, &st) >= 0 || errno != ENOENT)
+    {
+      msg("Control group %s already exists, trying to empty it.\n", cg_path);
+      if (rmdir(cg_path) < 0)
+	die("Failed to reset control group %s: %m", cg_path);
+    }
+
+  if (mkdir(cg_path, 0777) < 0)
+    die("Failed to create control group %s: %m", cg_path);
+
+  // If cpuset module is enabled, copy allowed cpus and memory nodes from parent group
+  if (cg_read("?../cpuset.cpus", buf))
+    cg_write("cpuset.cpus", "%s", buf);
+  if (cg_read("?../cpuset.mems", buf))
+    cg_write("cpuset.mems", "%s", buf);
+}
+
+static void
+cg_enter(void)
+{
+  if (!cg_enable)
+    return;
+
+  msg("Entering control group %s\n", cg_path);
+
+  struct stat st;
+  if (stat(cg_path, &st) < 0)
+    die("Control group %s does not exist: %m", cg_path);
+
+  if (cg_memory_limit)
+    {
+      cg_write("memory.limit_in_bytes", "%lld\n", (long long) cg_memory_limit << 10);
+      cg_write("memory.memsw.limit_in_bytes", "%lld\n", (long long) cg_memory_limit << 10);
+    }
+
+  if (cg_timing)
+    cg_write("cpuacct.usage", "0\n");
+
+  cg_write("tasks", "%d\n", (int) getpid());
+}
+
+static int
+cg_get_run_time_ms(void)
+{
+  if (!cg_enable)
+    return 0;
+
+  char buf[CG_BUFSIZE];
+  cg_read("cpuacct.usage", buf);
+  unsigned long long ns = atoll(buf);
+  return ns / 1000000;
+}
+
+static void
+cg_stats(void)
+{
+  if (!cg_enable)
+    return;
+
+  char buf[CG_BUFSIZE];
+
+  // Memory usage statistics
+  unsigned long long mem=0, memsw=0;
+  if (cg_read("?memory.max_usage_in_bytes", buf))
+    mem = atoll(buf);
+  if (cg_read("?memory.memsw.max_usage_in_bytes", buf))
+    {
+      memsw = atoll(buf);
+      if (memsw > mem)
+	mem = memsw;
+    }
+  if (mem)
+    meta_printf("cg-mem:%lld\n", mem >> 10);
+}
+
+static void
+cg_remove(void)
+{
+  char buf[CG_BUFSIZE];
+
+  if (!cg_enable)
+    return;
+
+  cg_read("tasks", buf);
+  if (buf[0])
+    die("Some tasks left in control group %s, failed to remove it", cg_path);
+
+  // FIXME: Is this needed?
+  // cg_write("memory.force_empty", "0\n");
+
+  if (rmdir(cg_path) < 0)
+    die("Cannot remove control group %s: %m", cg_path);
+}
+
 /*** The keeper process ***/
 
 static void
@@ -395,16 +596,49 @@ read_proc_file(char *buf, char *name, int *fdp)
   buf[c] = 0;
 }
 
+static int
+get_wall_time_ms(void)
+{
+  struct timeval now, wall;
+  gettimeofday(&now, NULL);
+  timersub(&now, &start_time, &wall);
+  return wall.tv_sec*1000 + wall.tv_usec/1000;
+}
+
+static int
+get_run_time_ms(void)
+{
+  if (cg_timing)
+    return cg_get_run_time_ms();
+
+  char buf[PROC_BUF_SIZE], *x;
+  int utime, stime;
+  static int proc_stat_fd;
+
+  read_proc_file(buf, "stat", &proc_stat_fd);
+  x = buf;
+  while (*x && *x != ' ')
+    x++;
+  while (*x == ' ')
+    x++;
+  if (*x++ != '(')
+    die("proc stat syntax error 1");
+  while (*x && (*x != ')' || x[1] != ' '))
+    x++;
+  while (*x == ')' || *x == ' ')
+    x++;
+  if (sscanf(x, "%*c %*d %*d %*d %*d %*d %*d %*d %*d %*d %*d %d %d", &utime, &stime) != 2)
+    die("proc stat syntax error 2");
+
+  return (utime + stime) * 1000 / ticks_per_sec;
+}
+
 static void
 check_timeout(void)
 {
   if (wall_timeout)
     {
-      struct timeval now, wall;
-      int wall_ms;
-      gettimeofday(&now, NULL);
-      timersub(&now, &start_time, &wall);
-      wall_ms = wall.tv_sec*1000 + wall.tv_usec/1000;
+      int wall_ms = get_wall_time_ms();
       if (wall_ms > wall_timeout)
         err("TO: Time limit exceeded (wall clock)");
       if (verbose > 1)
@@ -412,24 +646,7 @@ check_timeout(void)
     }
   if (timeout)
     {
-      char buf[PROC_BUF_SIZE], *x;
-      int utime, stime, ms;
-      static int proc_stat_fd;
-      read_proc_file(buf, "stat", &proc_stat_fd);
-      x = buf;
-      while (*x && *x != ' ')
-	x++;
-      while (*x == ' ')
-	x++;
-      if (*x++ != '(')
-	die("proc stat syntax error 1");
-      while (*x && (*x != ')' || x[1] != ' '))
-	x++;
-      while (*x == ')' || *x == ' ')
-	x++;
-      if (sscanf(x, "%*c %*d %*d %*d %*d %*d %*d %*d %*d %*d %*d %d %d", &utime, &stime) != 2)
-	die("proc stat syntax error 2");
-      ms = (utime + stime) * 1000 / ticks_per_sec;
+      int ms = get_run_time_ms();
       if (verbose > 1)
 	fprintf(stderr, "[time check: %d msec]\n", ms);
       if (ms > timeout && ms > extra_timeout)
@@ -521,9 +738,7 @@ box_keeper(void)
 static void
 setup_root(void)
 {
-  umask(0027);
-
-  if (mkdir("root", 0777) < 0 && errno != EEXIST)
+  if (mkdir("root", 0750) < 0 && errno != EEXIST)
     die("mkdir('root'): %m");
 
   if (mount("none", "root", "tmpfs", 0, "mode=755") < 0)
@@ -540,13 +755,13 @@ setup_root(void)
       char buf[1024];	// FIXME
       sprintf(buf, "root/%s", (d[0] == '/' ? d+1 : d));
       msg("Binding %s on %s\n", d, buf);
-      if (mkdir(buf, 0777) < 0)
+      if (mkdir(buf, 0755) < 0)
 	die("mkdir(%s): %m", buf);
       if (mount(d, buf, "none", MS_BIND | MS_NOSUID | MS_NODEV, "") < 0)
 	die("Cannot bind %s on %s: %m", d, buf);
     }
 
-  if (mkdir("root/proc", 0777) < 0)
+  if (mkdir("root/proc", 0755) < 0)
     die("Cannot create proc: %m");
   if (mount("none", "root/proc", "proc", 0, "") < 0)
     die("Cannot mount proc: %m");
@@ -572,6 +787,7 @@ box_inside(void *arg)
   memcpy(args, argv, argc * sizeof(char *));
   args[argc] = NULL;
 
+  cg_enter();
   setup_root();
 
   if (setresgid(BOX_GID, BOX_GID, BOX_GID) < 0)
@@ -618,10 +834,12 @@ box_inside(void *arg)
   if (setrlimit(RLIMIT_NOFILE, &rl) < 0)
     die("setrlimit(RLIMIT_NOFILE): %m");
 
-  // FIXME: Create multi-process mode
-  rl.rlim_cur = rl.rlim_max = 1;
-  if (setrlimit(RLIMIT_NPROC, &rl) < 0)
-    die("setrlimit(RLIMIT_NPROC): %m");
+  if (max_processes)
+    {
+      rl.rlim_cur = rl.rlim_max = max_processes;
+      if (setrlimit(RLIMIT_NPROC, &rl) < 0)
+	die("setrlimit(RLIMIT_NPROC): %m");
+    }
 
   rl.rlim_cur = rl.rlim_max = 0;
   if (setrlimit(RLIMIT_MEMLOCK, &rl) < 0)
@@ -633,7 +851,7 @@ box_inside(void *arg)
 }
 
 static void
-prepare(void)
+init(void)
 {
   msg("Preparing sandbox directory\n");
   xsystem("rm -rf box");
@@ -641,13 +859,20 @@ prepare(void)
     die("Cannot create box: %m");
   if (chown("box", orig_uid, orig_gid) < 0)
     die("Cannot chown box: %m");
+
+  cg_prepare();
 }
 
 static void
 cleanup(void)
 {
+  struct stat st;
+  if (stat("box", &st) < 0 || !S_ISDIR(st.st_mode))
+    die("Box directory not found, there isn't anything to clean up");
+
   msg("Deleting sandbox directory\n");
   xsystem("rm -rf box");
+  cg_remove();
 }
 
 static void
@@ -655,7 +880,7 @@ run(char **argv)
 {
   struct stat st;
   if (stat("box", &st) < 0 || !S_ISDIR(st.st_mode))
-    die("Box directory not found, did you run `isolate --prepare'?");
+    die("Box directory not found, did you run `isolate --init'?");
 
   char cmd[256];
   snprintf(cmd, sizeof(cmd), "chown -R %d.%d box", BOX_UID, BOX_GID);
@@ -692,23 +917,27 @@ usage(void)
 Usage: isolate [<options>] <command>\n\
 \n\
 Options:\n\
--e, --full-env\t\tInherit full environment of the parent process\n\
+-c, --cg[=<parent>]\tPut process in a control group (optionally a sub-group of <parent>)\n\
+    --cg-mem=<size>\tLimit memory usage of the control group to <size> KB\n\
+    --cg-timing\t\tTime limits affects total run time of the control group\n\
 -E, --env=<var>\tInherit the environment variable <var> from the parent process\n\
 -E, --env=<var>=<val>\tSet the environment variable <var> to <val>; unset it if <var> is empty\n\
--i, --stdin=<file>\tRedirect stdin from <file>\n\
--k, --stack=<size>\tLimit stack size to <size> KB (default: 0=unlimited)\n\
+-x, --extra-time=<time>\tSet extra timeout, before which a timing-out program is not yet killed,\n\
+\t\t\tso that its real execution time is reported (seconds, fractions allowed)\n\
+-e, --full-env\t\tInherit full environment of the parent process\n\
 -m, --mem=<size>\tLimit address space to <size> KB\n\
 -M, --meta=<file>\tOutput process information to <file> (name:value)\n\
--o, --stdout=<file>\tRedirect stdout to <file>\n\
+-k, --stack=<size>\tLimit stack size to <size> KB (default: 0=unlimited)\n\
 -r, --stderr=<file>\tRedirect stderr to <file>\n\
+-i, --stdin=<file>\tRedirect stdin from <file>\n\
+-o, --stdout=<file>\tRedirect stdout to <file>\n\
+-p, --processes[=<max>]\tEnable multiple processes (at most <max> of them); needs --cg\n\
 -t, --time=<time>\tSet run time limit (seconds, fractions allowed)\n\
 -v, --verbose\t\tBe verbose (use multiple times for even more verbosity)\n\
 -w, --wall-time=<time>\tSet wall clock time limit (seconds, fractions allowed)\n\
--x, --extra-time=<time>\tSet extra timeout, before which a timing-out program is not yet killed,\n\
-\t\t\tso that its real execution time is reported (seconds, fractions allowed)\n\
 \n\
 Commands:\n\
-    --prepare\t\tInitialize sandbox\n\
+    --init\t\tInitialize sandbox (and its control group when --cg is used)\n\
     --run -- <cmd> ...\tRun given command within sandbox\n\
     --cleanup\t\tClean up sandbox\n\
     --version\t\tDisplay program version and configuration\n\
@@ -717,31 +946,37 @@ Commands:\n\
 }
 
 enum opt_code {
-  OPT_PREPARE = 256,
+  OPT_INIT = 256,
   OPT_RUN,
   OPT_CLEANUP,
   OPT_VERSION,
+  OPT_CG_MEM,
+  OPT_CG_TIMING,
 };
 
-static const char short_opts[] = "eE:i:k:m:M:o:r:t:vw:x:";
+static const char short_opts[] = "c::eE:i:k:m:M:o:p::r:t:vw:x:";
 
 static const struct option long_opts[] = {
-  { "full-env",		0, NULL, 'e' },
+  { "cg",		2, NULL, 'c' },
+  { "cg-mem",		1, NULL, OPT_CG_MEM },
+  { "cg-timing",	0, NULL, OPT_CG_TIMING },
+  { "cleanup",		0, NULL, OPT_CLEANUP },
   { "env",		1, NULL, 'E' },
-  { "stdin",		1, NULL, 'i' },
-  { "stack",		1, NULL, 'k' },
+  { "extra-time",	1, NULL, 'x' },
+  { "full-env",		0, NULL, 'e' },
+  { "init",		0, NULL, OPT_INIT },
   { "mem",		1, NULL, 'm' },
   { "meta",		1, NULL, 'M' },
-  { "stdout",		1, NULL, 'o' },
+  { "processes",	2, NULL, 'p' },
+  { "run",		0, NULL, OPT_RUN },
+  { "stack",		1, NULL, 'k' },
   { "stderr",		1, NULL, 'r' },
+  { "stdin",		1, NULL, 'i' },
+  { "stdout",		1, NULL, 'o' },
   { "time",		1, NULL, 't' },
   { "verbose",		0, NULL, 'v' },
-  { "wall-time",	1, NULL, 'w' },
-  { "extra-time",	1, NULL, 'x' },
-  { "prepare",		0, NULL, OPT_PREPARE },
-  { "run",		0, NULL, OPT_RUN },
-  { "cleanup",		0, NULL, OPT_CLEANUP },
   { "version",		0, NULL, OPT_VERSION },
+  { "wall-time",	1, NULL, 'w' },
   { NULL,		0, NULL, 0 }
 };
 
@@ -754,6 +989,11 @@ main(int argc, char **argv)
   while ((c = getopt_long(argc, argv, short_opts, long_opts, NULL)) >= 0)
     switch (c)
       {
+      case 'c':
+	if (optarg)
+	  cg_root = optarg;
+	cg_enable = 1;
+	break;
       case 'e':
 	pass_environ = 1;
 	break;
@@ -762,19 +1002,25 @@ main(int argc, char **argv)
 	  usage();
 	break;
       case 'k':
-	stack_limit = atol(optarg);
+	stack_limit = atoi(optarg);
 	break;
       case 'i':
 	redir_stdin = optarg;
 	break;
       case 'm':
-	memory_limit = atol(optarg);
+	memory_limit = atoi(optarg);
 	break;
       case 'M':
 	meta_open(optarg);
 	break;
       case 'o':
 	redir_stdout = optarg;
+	break;
+      case 'p':
+	if (optarg)
+	  max_processes = atoi(optarg);
+	else
+	  max_processes = 0;
 	break;
       case 'r':
 	redir_stderr = optarg;
@@ -791,11 +1037,17 @@ main(int argc, char **argv)
       case 'x':
 	extra_timeout = 1000*atof(optarg);
 	break;
-      case OPT_PREPARE:
+      case OPT_INIT:
       case OPT_RUN:
       case OPT_CLEANUP:
       case OPT_VERSION:
 	mode = c;
+	break;
+      case OPT_CG_MEM:
+	cg_memory_limit = atoi(optarg);
+	break;
+      case OPT_CG_TIMING:
+	cg_timing = 1;
 	break;
       default:
 	usage();
@@ -814,15 +1066,17 @@ main(int argc, char **argv)
   orig_uid = getuid();
   orig_gid = getgid();
 
+  umask(022);
   if (chdir(BOX_DIR) < 0)
     die("chdir(%s): %m", BOX_DIR);
+  cg_init();
 
   switch (mode)
     {
-    case OPT_PREPARE:
+    case OPT_INIT:
       if (optind < argc)
 	usage();
-      prepare();
+      init();
       break;
     case OPT_RUN:
       if (optind >= argc)
