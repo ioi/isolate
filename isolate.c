@@ -31,10 +31,9 @@
 #define UNUSED __attribute__((unused))
 #define ARRAY_SIZE(a) (int)(sizeof(a)/sizeof(a[0]))
 
-// FIXME: Make configurable, probably in compile time
-#define BOX_DIR "/tmp/box"
-#define BOX_UID 60000
-#define BOX_GID 60000
+#define BOX_DIR CONFIG_ISOLATE_BOX_DIR
+#define BOX_UID CONFIG_ISOLATE_BOX_UID
+#define BOX_GID CONFIG_ISOLATE_BOX_GID
 
 static int timeout;			/* milliseconds */
 static int wall_timeout;
@@ -760,16 +759,12 @@ setup_root(void)
   if (mount("none", "root", "tmpfs", 0, "mode=755") < 0)
     die("Cannot mount root ramdisk: %m");
 
-  // FIXME: Make the list of bind-mounts configurable
-  // FIXME: Virtual /dev?
-  // FIXME: Read-only mounts?
-
   static const char * const dirs[] = { "box", "/bin", "/lib", "/usr", "/dev" };
   for (int i=0; i < ARRAY_SIZE(dirs); i++)
     {
       const char *d = dirs[i];
-      char buf[1024];	// FIXME
-      sprintf(buf, "root/%s", (d[0] == '/' ? d+1 : d));
+      char buf[1024];
+      snprintf(buf, sizeof(buf), "root/%s", (d[0] == '/' ? d+1 : d));
       msg("Binding %s on %s\n", d, buf);
       if (mkdir(buf, 0755) < 0)
 	die("mkdir(%s): %m", buf);
@@ -870,6 +865,8 @@ box_inside(void *arg)
   die("execve(\"%s\"): %m", args[0]);
 }
 
+/*** Commands ***/
+
 static void
 init(void)
 {
@@ -935,6 +932,8 @@ show_version(void)
   printf("Sandbox directory: %s\n", BOX_DIR);
   printf("Sandbox credentials: uid=%u gid=%u\n", BOX_UID, BOX_GID);
 }
+
+/*** Options ***/
 
 static void
 usage(void)

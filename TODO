@@ -1,0 +1,12 @@
+
+Isolate
+~~~~~~~
+Make the list of bind-mounts configurable (some of them even read-only)
+Virtual /dev
+Installation
+Test: ptrace self
+Test: SIGSTOP
+Test: ping-pong timing attacks
+Test: big static memory
+Doc: avoid AS randomization
+Doc: avoid cpufreq
