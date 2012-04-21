@@ -954,7 +954,7 @@ Options:\n\
 -c, --cg[=<parent>]\tPut process in a control group (optionally a sub-group of <parent>)\n\
     --cg-mem=<size>\tLimit memory usage of the control group to <size> KB\n\
     --cg-timing\t\tTime limits affects total run time of the control group\n\
--E, --env=<var>\tInherit the environment variable <var> from the parent process\n\
+-E, --env=<var>\t\tInherit the environment variable <var> from the parent process\n\
 -E, --env=<var>=<val>\tSet the environment variable <var> to <val>; unset it if <var> is empty\n\
 -x, --extra-time=<time>\tSet extra timeout, before which a timing-out program is not yet killed,\n\
 \t\t\tso that its real execution time is reported (seconds, fractions allowed)\n\
