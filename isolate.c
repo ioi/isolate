@@ -485,14 +485,7 @@ static void make_dir(char *path)
       if (sep)
 	*sep = 0;
 
-      if (dir_exists(path))
-	{
-	  if (sep)
-	    *sep = '/';
-	  return;
-	}
-
-      if (mkdir(path, 0777) < 0)
+      if (!dir_exists(path) && mkdir(path, 0777) < 0)
 	die("Cannot create directory %s: %m\n", path);
 
       if (!sep)
