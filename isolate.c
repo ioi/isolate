@@ -407,7 +407,10 @@ enum dir_rule_flags {
   DIR_FLAG_NOEXEC = 2,
   DIR_FLAG_FS = 4,
   DIR_FLAG_MAYBE = 8,
+  DIR_FLAG_DEV = 16,
 };
+
+static const char * const dir_flag_names[] = { "rw", "noexec", "fs", "maybe", "dev" };
 
 static struct dir_rule *first_dir_rule;
 static struct dir_rule **last_dir_rule = &first_dir_rule;
@@ -434,14 +437,14 @@ static int add_dir_rule(char *in, char *out, unsigned int flags)
 
   // Override an existing rule
   struct dir_rule *r;
-  for (r = first_dir_rule; r; r=r->next)
+  for (r = first_dir_rule; r; r = r->next)
     if (!strcmp(r->inside, in))
       break;
 
   // Add a new rule
   if (!r)
     {
-      struct dir_rule *r = xmalloc(sizeof(*r));
+      r = xmalloc(sizeof(*r));
       r->inside = in;
       *last_dir_rule = r;
       last_dir_rule = &r->next;
@@ -454,14 +457,9 @@ static int add_dir_rule(char *in, char *out, unsigned int flags)
 
 static unsigned int parse_dir_option(char *opt)
 {
-  if (!strcmp(opt, "rw"))
-    return DIR_FLAG_RW;
-  if (!strcmp(opt, "noexec"))
-    return DIR_FLAG_NOEXEC;
-  if (!strcmp(opt, "fs"))
-    return DIR_FLAG_FS;
-  if (!strcmp(opt, "maybe"))
-    return DIR_FLAG_MAYBE;
+  for (unsigned int i = 0; i < ARRAY_SIZE(dir_flag_names); i++)
+    if (!strcmp(opt, dir_flag_names[i]))
+      return 1U << i;
   die("Unknown directory option %s", opt);
 }
 
@@ -473,11 +471,11 @@ static int set_dir_action(char *arg)
   unsigned int flags = 0;
   while (colon)
     {
-      char *opt = colon + 1;
-      char *next = strchr(opt, ':');
+      *colon++ = 0;
+      char *next = strchr(colon, ':');
       if (next)
 	*next = 0;
-      flags |= parse_dir_option(opt);
+      flags |= parse_dir_option(colon);
       colon = next;
     }
 
@@ -499,7 +497,7 @@ static void init_dir_rules(void)
 {
   set_dir_action("box=./box:rw");
   set_dir_action("bin");
-  set_dir_action("dev");
+  set_dir_action("dev:dev");
   set_dir_action("lib");
   set_dir_action("lib64:maybe");
   set_dir_action("proc=proc:fs");
@@ -551,18 +549,23 @@ static void apply_dir_rules(void)
 	mount_flags |= MS_RDONLY;
       if (r->flags & DIR_FLAG_NOEXEC)
 	mount_flags |= MS_NOEXEC;
+      if (!(r->flags & DIR_FLAG_DEV))
+	mount_flags |= MS_NODEV;
 
       if (r->flags & DIR_FLAG_FS)
 	{
-	  msg("Mounting %s on %s\n", out, in);
+	  msg("Mounting %s on %s (flags %lx)\n", out, in, mount_flags);
 	  if (mount("none", root_in, out, mount_flags, "") < 0)
 	    die("Cannot mount %s on %s: %m", out, in);
 	}
       else
 	{
-	  msg("Binding %s on %s\n", out, in);
-	  if (mount(out, root_in, "none", MS_BIND | MS_NOSUID | MS_NODEV | mount_flags, "") < 0)
-	    die("Cannot bind %s on %s: %m", out, in);
+	  mount_flags |= MS_BIND | MS_NOSUID;
+	  msg("Binding %s on %s (flags %lx)\n", out, in, mount_flags);
+	  // Most mount flags need remount to work
+	  if (mount(out, root_in, "none", mount_flags, "") < 0 ||
+	      mount(out, root_in, "none", MS_REMOUNT | mount_flags, "") < 0)
+	    die("Cannot mount %s on %s: %m", out, in);
 	}
     }
 }
@@ -1129,7 +1132,12 @@ Options:\n\
 -d, --dir=<dir>\t\tMake a directory <dir> visible inside the sandbox\n\
     --dir=<in>=<out>\tMake a directory <out> outside visible as <in> inside\n\
     --dir=<in>=\t\tDelete a previously defined directory rule (even a default one)\n\
-    --dir=...:<opt>\tSpecify options for a rule: rw, noexec, fs, maybe\n\
+    --dir=...:<opt>\tSpecify options for a rule:\n\
+\t\t\t\tdev\tAllow access to special files\n\
+\t\t\t\tfs\tMount a filesystem (e.g., --dir=/proc:proc:fs)\n\
+\t\t\t\tmaybe\tSkip the rule if <out> does not exist\n\
+\t\t\t\tnoexec\tDo not allow execution of binaries\n\
+\t\t\t\trw\tAllow read-write access\n\
 -E, --env=<var>\t\tInherit the environment variable <var> from the parent process\n\
 -E, --env=<var>=<val>\tSet the environment variable <var> to <val>; unset it if <var> is empty\n\
 -x, --extra-time=<time>\tSet extra timeout, before which a timing-out program is not yet killed,\n\
