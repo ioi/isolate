@@ -1,0 +1,179 @@
+ISOLATE(1)
+==========
+
+NAME
+----
+isolate - Isolate a process using Linux Containers
+
+SYNOPSIS
+--------
+*isolate* 'options' *--init*
+
+*isolate* 'options' *--run* +--+ 'program' 'arguments'
+
+*isolate* 'options' *--cleanup*
+
+DESCRIPTION
+-----------
+Run 'program' within a sandbox, so that it cannot communicate with the
+outside world and its resource consumption is limited. This can be used
+for example in a programming contest to run untrusted programs submitted
+by contestants in a controlled environment.
+
+The sandbox is used in the following way:
+
+* Run *isolate --init*, which initializes the sandbox, creates its working directory and
+prints its name to the standard output.
+
+* Populate the directory with the executable file of the program and its
+input files.
+
+* Call *isolate --run* to run the program. A single line describing the
+status of the program is written to the standard error stream.
+
+* Fetch the output of the program from the directory.
+
+* Run *isolate --cleanup* to remove temporary files.
+
+Please note that by default, the program is not allowed to start multiple
+processes of threads. If you need that, turn on the control group mode
+(see below).
+
+OPTIONS
+-------
+*-M, --meta=*'file'::
+	Output meta-data on the execution of the program to a given file.
+	See below for syntax of the meta-files.
+
+*-m, --mem=*'size'::
+	Limit address space of the program to 'size' kilobytes. If more processes
+	are allowed, this applies to each of them separately.
+
+*-t, --time=*'time'::
+	Limit run time of the program to 'time' seconds. Fractional numbers are allowed.
+	Time in which the OS assigns the processor to different tasks is not counted.
+
+*-w, --wall-time=*'time'::
+	Limit wall-clock time to 'time' seconds. Fractional values are allowed.
+	This clock measures the time from the start of the program to its exit,
+	so it does not stop when the program has lost the CPU or when it is waiting
+	for an external event. We recommend to use *--time* as the main limit,
+	but set *--wall-time* to a much higher value as a precaution against
+	sleeping programs.
+
+*-x, --extra-time=*'time'::
+	When a time limit is exceeded, wait for extra 'time' seconds before
+	killing the program. This has the advantage that the real execution time
+	is reported, even though it slightly exceeds the limit. Fractional
+	numbers are again allowed.
+
+*-k, --stack=*'size'::
+	Limit process stack to 'size' kilobytes. By default, the whole address
+	space is available for the stack, but it is subject to the *--mem* limit.
+
+*-i, --stdin=*'file'::
+	Redirect standard input from 'file'. The 'file' has to be accessible
+	inside the sandbox.
+
+*-o, --stdout=*'file'::
+	Redirect standard output to 'file'. The 'file' has to be accessible
+	inside the sandbox.
+
+*-r, --stderr=*'file'::
+	Redirect standard error output to 'file'. The 'file' has to be accessible
+	inside the sandbox.
+
+*-p, --processes=*'max'::
+	Permit the program to create up to 'max' processes and/or threads. Please
+	keep in mind that time and memory limit do not work with multiple processes
+	unless you enable the control group mode.
+
+*-v, --verbose*::
+	Tell the sandbox manager to be verbose and report on what is going on.
+	Using *-v* multiple times produces even more jabber.
+
+ENVIRONMENT RULES
+-----------------
+UNIX processes normally inherit all environment variables from their parent. The
+sandbox however passes only those variables which are explicitly requested by
+environment rules:
+
+*-E, --env=*'var'::
+	Inherit the variable 'var' from the parent.
+
+*-E, --env=*'var'*=*'value'::
+	Set the variable 'var' to 'value'. When the 'value' is empty, the
+	variable is removed from the environment.
+
+*-e, --full-env*::
+	Inherit all variables from the parent.
+
+The rules are applied in the order in which they were given, except for
+*--full-env*, which is applied first.
+
+The list of rules is automatically initialized with *-ELIBC_FATAL_STDERR_=1*.
+
+DIRECTORY RULES
+---------------
+The sandboxed process gets its own filesystem namespace, which contains only subtrees
+requested by directory rules:
+
+*-d, --dir=*'in'*=*'out'[*:*'options']::
+	Bind the directory 'out' as seen by the caller to the path 'in' inside the sandbox.
+	If there already was a directory rule for 'out', it is replaced.
+
+*-d, --dir=*'dir'[*:*'options']::
+	Bind the directory +/+'dir' to 'dir' inside the sandbox.
+	If there already was a directory rule for 'out', it is replaced.
+
+*-d, --dir=*'in'*=*::
+	Remove a directory rule for the path 'in' inside the sandbox.
+
+By default, all directories are bound read-only and restricted (no devices,
+no setuid binaries). This behavior can be modified using the 'options':
+
+*rw*::
+	Allow read-write access.
+
+*dev*::
+	Allow access to character and block devices.
+
+*noexec*::
+	Disallow execution of binaries.
+
+*maybe*::
+	Silently ignore the rule if the directory to be bound does not exist.
+
+*fs*::
+	Instead of binding a directory, mount a device-less filesystem called 'in'.
+	For example, this can be 'proc' or 'sysfs'.
+
+The default set of directory rules binds +/bin+, +/dev+ (with devices allowed), +/lib+,
++/lib64+ (if it exists), and +/usr+. It also binds the working directory to +/box+ (read-write)
+and mounts the proc filesystem at +/proc+.
+
+CONTROL GROUPS
+--------------
+TODO
+
+*-c, --cg*::
+	TODO
+
+*--cg-mem=*'size'::
+	Limit total memory usage by the whole control group to 'size' kilobytes.
+
+*--cg-timing*::
+	Use control groups for timing, so that the *--time* switch affects the
+	total run time of all processes and threads in the control group.
+
+META-FILES
+----------
+TODO
+
+RETURN VALUE
+------------
+TODO
+
+REQUIREMENTS
+------------
+TODO
