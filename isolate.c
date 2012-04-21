@@ -1090,7 +1090,9 @@ cleanup(void)
     die("Box directory not found, there isn't anything to clean up");
 
   msg("Deleting sandbox directory\n");
-  xsystem("rm -rf box");
+  xsystem("rm -rf *");
+  if (rmdir(box_dir) < 0)
+    die("Cannot remove %s: %m", box_dir);
   cg_remove();
 }
 
