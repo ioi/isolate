@@ -397,18 +397,22 @@ setup_environment(void)
 
 struct dir_rule {
   char *inside;			// A relative path
-  char *outside;		// This can be:
-				//   - an absolute path
-				//   - a relative path starting with "./"
-				//   - one of the above prefixed with "?" to mean "only if exists"
-				//   - "procfs"
+  char *outside;		// This can be an absolute path or a relative path starting with "./"
+  unsigned int flags;		// DIR_FLAG_xxx
   struct dir_rule *next;
+};
+
+enum dir_rule_flags {
+  DIR_FLAG_RW = 1,
+  DIR_FLAG_NOEXEC = 2,
+  DIR_FLAG_FS = 4,
+  DIR_FLAG_MAYBE = 8,
 };
 
 static struct dir_rule *first_dir_rule;
 static struct dir_rule **last_dir_rule = &first_dir_rule;
 
-static int add_dir_rule(char *in, char *out)
+static int add_dir_rule(char *in, char *out, unsigned int flags)
 {
   // Make sure that "in" is relative
   while (in[0] == '/')
@@ -417,62 +421,88 @@ static int add_dir_rule(char *in, char *out)
     return 0;
 
   // Check "out"
-  if (out)
+  if (flags & DIR_FLAG_FS)
     {
-      char *o = out;
-      if (*o == '?')
-	o++;
-      if (!(o[0] == '/' ||
-	    !strncmp(o, "./", 2) ||
-	    !strcmp(o, "procfs")))
+      if (!out || out[0] == '/')
+	return 0;
+    }
+  else
+    {
+      if (out && out[0] != '/' && strncmp(out, "./", 2))
 	return 0;
     }
 
   // Override an existing rule
-  for (struct dir_rule *r = first_dir_rule; r; r=r->next)
+  struct dir_rule *r;
+  for (r = first_dir_rule; r; r=r->next)
     if (!strcmp(r->inside, in))
-      {
-	r->outside = out;
-	return 1;
-      }
+      break;
 
   // Add a new rule
-  struct dir_rule *r = xmalloc(sizeof(*r));
-  r->inside = in;
+  if (!r)
+    {
+      struct dir_rule *r = xmalloc(sizeof(*r));
+      r->inside = in;
+      *last_dir_rule = r;
+      last_dir_rule = &r->next;
+      r->next = NULL;
+    }
   r->outside = out;
-  *last_dir_rule = r;
-  last_dir_rule = &r->next;
-  r->next = NULL;
-
+  r->flags = flags;
   return 1;
+}
+
+static unsigned int parse_dir_option(char *opt)
+{
+  if (!strcmp(opt, "rw"))
+    return DIR_FLAG_RW;
+  if (!strcmp(opt, "noexec"))
+    return DIR_FLAG_NOEXEC;
+  if (!strcmp(opt, "fs"))
+    return DIR_FLAG_FS;
+  if (!strcmp(opt, "maybe"))
+    return DIR_FLAG_MAYBE;
+  die("Unknown directory option %s", opt);
 }
 
 static int set_dir_action(char *arg)
 {
   arg = xstrdup(arg);
-  char *sep = strchr(arg, '=');
 
-  if (sep)
+  char *colon = strchr(arg, ':');
+  unsigned int flags = 0;
+  while (colon)
     {
-      *sep++ = 0;
-      return add_dir_rule(arg, (*sep ? sep : NULL));
+      char *opt = colon + 1;
+      char *next = strchr(opt, ':');
+      if (next)
+	*next = 0;
+      flags |= parse_dir_option(opt);
+      colon = next;
+    }
+
+  char *eq = strchr(arg, '=');
+  if (eq)
+    {
+      *eq++ = 0;
+      return add_dir_rule(arg, (*eq ? eq : NULL), flags);
     }
   else
     {
       char *out = xmalloc(1 + strlen(arg) + 1);
       sprintf(out, "/%s", arg);
-      return add_dir_rule(arg, out);
+      return add_dir_rule(arg, out, flags);
     }
 }
 
 static void init_dir_rules(void)
 {
-  set_dir_action("box=./box");
+  set_dir_action("box=./box:rw");
   set_dir_action("bin");
   set_dir_action("dev");
   set_dir_action("lib");
-  set_dir_action("lib64=?/lib64");
-  set_dir_action("proc=procfs");
+  set_dir_action("lib64:maybe");
+  set_dir_action("proc=proc:fs");
   set_dir_action("usr");
 }
 
@@ -506,30 +536,32 @@ static void apply_dir_rules(void)
 	  continue;
 	}
 
-      if (out[0] == '?')
+      if ((r->flags & DIR_FLAG_MAYBE) && !dir_exists(out))
 	{
-	  out++;
-	  if (!dir_exists(out))
-	    {
-	      msg("Not binding %s on %s (does not exist)\n", out, r->inside);
-	      continue;
-	    }
+	  msg("Not binding %s on %s (does not exist)\n", out, r->inside);
+	  continue;
 	}
 
       char root_in[1024];
       snprintf(root_in, sizeof(root_in), "root/%s", in);
       make_dir(root_in);
 
-      if (!strcmp(out, "procfs"))
+      unsigned long mount_flags = 0;
+      if (!(r->flags & DIR_FLAG_RW))
+	mount_flags |= MS_RDONLY;
+      if (r->flags & DIR_FLAG_NOEXEC)
+	mount_flags |= MS_NOEXEC;
+
+      if (r->flags & DIR_FLAG_FS)
 	{
-	  msg("Mounting procfs on %s\n", in);
-	  if (mount("none", root_in, "proc", 0, "") < 0)
-	    die("Cannot mount proc on %s: %m", in);
+	  msg("Mounting %s on %s\n", out, in);
+	  if (mount("none", root_in, out, mount_flags, "") < 0)
+	    die("Cannot mount %s on %s: %m", out, in);
 	}
       else
 	{
 	  msg("Binding %s on %s\n", out, in);
-	  if (mount(out, root_in, "none", MS_BIND | MS_NOSUID | MS_NODEV, "") < 0)
+	  if (mount(out, root_in, "none", MS_BIND | MS_NOSUID | MS_NODEV | mount_flags, "") < 0)
 	    die("Cannot bind %s on %s: %m", out, in);
 	}
     }
@@ -1095,8 +1127,9 @@ Options:\n\
     --cg-mem=<size>\tLimit memory usage of the control group to <size> KB\n\
     --cg-timing\t\tTime limits affects total run time of the control group\n\
 -d, --dir=<dir>\t\tMake a directory <dir> visible inside the sandbox\n\
--d, --dir=<in>=<out>\tMake a directory <out> outside visible as <in> inside\n\
--d, --dir=<in>=\t\tDelete a previously defined directory rule (even a default one)\n\
+    --dir=<in>=<out>\tMake a directory <out> outside visible as <in> inside\n\
+    --dir=<in>=\t\tDelete a previously defined directory rule (even a default one)\n\
+    --dir=...:<opt>\tSpecify options for a rule: rw, noexec, fs, maybe\n\
 -E, --env=<var>\t\tInherit the environment variable <var> from the parent process\n\
 -E, --env=<var>=<val>\tSet the environment variable <var> to <val>; unset it if <var> is empty\n\
 -x, --extra-time=<time>\tSet extra timeout, before which a timing-out program is not yet killed,\n\
