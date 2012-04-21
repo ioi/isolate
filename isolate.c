@@ -506,7 +506,8 @@ static void init_dir_rules(void)
 
 static void make_dir(char *path)
 {
-  char *sep = path;
+  char *sep = (path[0] == '/' ? path+1 : path);
+
   for (;;)
     {
       sep = strchr(sep, '/');
@@ -1147,7 +1148,7 @@ usage(void)
 Usage: isolate [<options>] <command>\n\
 \n\
 Options:\n\
--b, --box-id=<id>\t\tWhen multiple sandboxes are used in parallel, each must get a unique ID\n\
+-b, --box-id=<id>\tWhen multiple sandboxes are used in parallel, each must get a unique ID\n\
 -c, --cg[=<parent>]\tPut process in a control group (optionally a sub-group of <parent>)\n\
     --cg-mem=<size>\tLimit memory usage of the control group to <size> KB\n\
     --cg-timing\t\tTime limits affects total run time of the control group\n\
