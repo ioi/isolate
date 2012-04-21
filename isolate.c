@@ -767,7 +767,7 @@ setup_root(void)
   if (mount("none", "root", "tmpfs", 0, "mode=755") < 0)
     die("Cannot mount root ramdisk: %m");
 
-  static const char * const dirs[] = { "box", "/bin", "/lib", "/usr", "/dev" };
+  static const char * const dirs[] = { "box", "/bin", "/lib", "/lib64", "/usr", "/dev" };
   for (int i=0; i < ARRAY_SIZE(dirs); i++)
     {
       const char *d = dirs[i];
