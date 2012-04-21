@@ -232,6 +232,8 @@ msg(char *msg, ...)
   va_end(args);
 }
 
+/*** Utility functions ***/
+
 static void *
 xmalloc(size_t size)
 {
@@ -239,6 +241,21 @@ xmalloc(size_t size)
   if (!p)
     die("Out of memory");
   return p;
+}
+
+static char *
+xstrdup(char *str)
+{
+  char *p = strdup(str);
+  if (!p)
+    die("Out of memory");
+  return p;
+}
+
+static int dir_exists(char *path)
+{
+  struct stat st;
+  return (stat(path, &st) >= 0 && S_ISDIR(st.st_mode));
 }
 
 /*** Environment rules ***/
@@ -376,6 +393,155 @@ setup_environment(void)
   return env;
 }
 
+/*** Mount rules ***/
+
+struct dir_rule {
+  char *inside;			// A relative path
+  char *outside;		// This can be:
+				//   - an absolute path
+				//   - a relative path starting with "./"
+				//   - one of the above prefixed with "?" to mean "only if exists"
+				//   - "procfs"
+  struct dir_rule *next;
+};
+
+static struct dir_rule *first_dir_rule;
+static struct dir_rule **last_dir_rule = &first_dir_rule;
+
+static int add_dir_rule(char *in, char *out)
+{
+  // Make sure that "in" is relative
+  while (in[0] == '/')
+    in++;
+  if (!*in)
+    return 0;
+
+  // Check "out"
+  if (out)
+    {
+      char *o = out;
+      if (*o == '?')
+	o++;
+      if (!(o[0] == '/' ||
+	    !strncmp(o, "./", 2) ||
+	    !strcmp(o, "procfs")))
+	return 0;
+    }
+
+  // Override an existing rule
+  for (struct dir_rule *r = first_dir_rule; r; r=r->next)
+    if (!strcmp(r->inside, in))
+      {
+	r->outside = out;
+	return 1;
+      }
+
+  // Add a new rule
+  struct dir_rule *r = xmalloc(sizeof(*r));
+  r->inside = in;
+  r->outside = out;
+  *last_dir_rule = r;
+  last_dir_rule = &r->next;
+  r->next = NULL;
+
+  return 1;
+}
+
+static int set_dir_action(char *arg)
+{
+  arg = xstrdup(arg);
+  char *sep = strchr(arg, '=');
+
+  if (sep)
+    {
+      *sep++ = 0;
+      return add_dir_rule(arg, (*sep ? sep : NULL));
+    }
+  else
+    {
+      char *out = xmalloc(1 + strlen(arg) + 1);
+      sprintf(out, "/%s", arg);
+      return add_dir_rule(arg, out);
+    }
+}
+
+static void init_dir_rules(void)
+{
+  set_dir_action("box=./box");
+  set_dir_action("bin");
+  set_dir_action("dev");
+  set_dir_action("lib");
+  set_dir_action("lib64=?/lib64");
+  set_dir_action("proc=procfs");
+  set_dir_action("usr");
+}
+
+static void make_dir(char *path)
+{
+  char *sep = path;
+  for (;;)
+    {
+      sep = strchr(sep, '/');
+      if (sep)
+	*sep = 0;
+
+      if (dir_exists(path))
+	{
+	  if (sep)
+	    *sep = '/';
+	  return;
+	}
+
+      if (mkdir(path, 0777) < 0)
+	die("Cannot create directory %s: %m\n", path);
+
+      if (!sep)
+	return;
+      *sep++ = '/';
+    }
+}
+
+static void apply_dir_rules(void)
+{
+  for (struct dir_rule *r = first_dir_rule; r; r=r->next)
+    {
+      char *in = r->inside;
+      char *out = r->outside;
+      if (!out)
+	{
+	  msg("Not binding anything on %s\n", r->inside);
+	  continue;
+	}
+
+      if (out[0] == '?')
+	{
+	  out++;
+	  if (!dir_exists(out))
+	    {
+	      msg("Not binding %s on %s (does not exist)\n", out, r->inside);
+	      continue;
+	    }
+	}
+
+      char root_in[1024];
+      snprintf(root_in, sizeof(root_in), "root/%s", in);
+      make_dir(root_in);
+
+      if (!strcmp(out, "procfs"))
+	{
+	  msg("Mounting procfs on %s\n", in);
+	  if (mount("none", root_in, "proc", 0, "") < 0)
+	    die("Cannot mount proc on %s: %m", in);
+	}
+      else
+	{
+	  msg("Binding %s on %s\n", out, in);
+	  if (mount(out, root_in, "none", MS_BIND | MS_NOSUID | MS_NODEV, "") < 0)
+	    die("Cannot bind %s on %s: %m", out, in);
+	}
+    }
+}
+
 /*** Control groups ***/
 
 static char cg_path[256];
@@ -456,8 +622,7 @@ cg_init(void)
   if (!cg_enable)
     return;
 
-  struct stat st;
-  if (stat(cg_root, &st) < 0 || !S_ISDIR(st.st_mode))
+  if (!dir_exists(cg_root))
     die("Control group filesystem at %s not mounted", cg_root);
 
   snprintf(cg_path, sizeof(cg_path), "%s/box-%d", cg_root, BOX_UID);
@@ -767,23 +932,7 @@ setup_root(void)
   if (mount("none", "root", "tmpfs", 0, "mode=755") < 0)
     die("Cannot mount root ramdisk: %m");
 
-  static const char * const dirs[] = { "box", "/bin", "/lib", "/lib64", "/usr", "/dev" };
-  for (int i=0; i < ARRAY_SIZE(dirs); i++)
-    {
-      const char *d = dirs[i];
-      char buf[1024];
-      snprintf(buf, sizeof(buf), "root/%s", (d[0] == '/' ? d+1 : d));
-      msg("Binding %s on %s\n", d, buf);
-      if (mkdir(buf, 0755) < 0)
-	die("mkdir(%s): %m", buf);
-      if (mount(d, buf, "none", MS_BIND | MS_NOSUID | MS_NODEV, "") < 0)
-	die("Cannot bind %s on %s: %m", d, buf);
-    }
-
-  if (mkdir("root/proc", 0755) < 0)
-    die("Cannot create proc: %m");
-  if (mount("none", "root/proc", "proc", 0, "") < 0)
-    die("Cannot mount proc: %m");
+  apply_dir_rules();
 
   if (chroot("root") < 0)
     die("Chroot failed: %m");
@@ -891,8 +1040,7 @@ init(void)
 static void
 cleanup(void)
 {
-  struct stat st;
-  if (stat("box", &st) < 0 || !S_ISDIR(st.st_mode))
+  if (!dir_exists("box"))
     die("Box directory not found, there isn't anything to clean up");
 
   msg("Deleting sandbox directory\n");
@@ -903,8 +1051,7 @@ cleanup(void)
 static void
 run(char **argv)
 {
-  struct stat st;
-  if (stat("box", &st) < 0 || !S_ISDIR(st.st_mode))
+  if (!dir_exists("box"))
     die("Box directory not found, did you run `isolate --init'?");
 
   char cmd[256];
@@ -954,6 +1101,9 @@ Options:\n\
 -c, --cg[=<parent>]\tPut process in a control group (optionally a sub-group of <parent>)\n\
     --cg-mem=<size>\tLimit memory usage of the control group to <size> KB\n\
     --cg-timing\t\tTime limits affects total run time of the control group\n\
+-d, --dir=<dir>\t\tMake a directory <dir> visible inside the sandbox\n\
+-d, --dir=<in>=<out>\tMake a directory <out> outside visible as <in> inside\n\
+-d, --dir=<in>=\t\tDelete a previously defined directory rule (even a default one)\n\
 -E, --env=<var>\t\tInherit the environment variable <var> from the parent process\n\
 -E, --env=<var>=<val>\tSet the environment variable <var> to <val>; unset it if <var> is empty\n\
 -x, --extra-time=<time>\tSet extra timeout, before which a timing-out program is not yet killed,\n\
@@ -988,13 +1138,14 @@ enum opt_code {
   OPT_CG_TIMING,
 };
 
-static const char short_opts[] = "c::eE:i:k:m:M:o:p::r:t:vw:x:";
+static const char short_opts[] = "c::d:eE:i:k:m:M:o:p::r:t:vw:x:";
 
 static const struct option long_opts[] = {
   { "cg",		2, NULL, 'c' },
   { "cg-mem",		1, NULL, OPT_CG_MEM },
   { "cg-timing",	0, NULL, OPT_CG_TIMING },
   { "cleanup",		0, NULL, OPT_CLEANUP },
+  { "dir",		1, NULL, 'd' },
   { "env",		1, NULL, 'E' },
   { "extra-time",	1, NULL, 'x' },
   { "full-env",		0, NULL, 'e' },
@@ -1020,6 +1171,8 @@ main(int argc, char **argv)
   int c;
   enum opt_code mode = 0;
 
+  init_dir_rules();
+
   while ((c = getopt_long(argc, argv, short_opts, long_opts, NULL)) >= 0)
     switch (c)
       {
@@ -1027,6 +1180,10 @@ main(int argc, char **argv)
 	if (optarg)
 	  cg_root = optarg;
 	cg_enable = 1;
+	break;
+      case 'd':
+	if (!set_dir_action(optarg))
+	  usage();
 	break;
       case 'e':
 	pass_environ = 1;
