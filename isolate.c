@@ -32,10 +32,6 @@
 #define UNUSED __attribute__((unused))
 #define ARRAY_SIZE(a) (int)(sizeof(a)/sizeof(a[0]))
 
-#define BOX_DIR CONFIG_ISOLATE_BOX_DIR
-#define BOX_UID CONFIG_ISOLATE_BOX_UID
-#define BOX_GID CONFIG_ISOLATE_BOX_GID
-
 static int timeout;			/* milliseconds */
 static int wall_timeout;
 static int extra_timeout;
@@ -49,12 +45,16 @@ static char *redir_stdin, *redir_stdout, *redir_stderr;
 static int cg_enable;
 static int cg_memory_limit;
 static int cg_timing;
-static char *cg_root = "/sys/fs/cgroup";
 
+static int box_id;
+static char box_dir[1024];
+static pid_t box_pid;
+
+static uid_t box_uid;
+static gid_t box_gid;
 static uid_t orig_uid;
 static gid_t orig_gid;
 
-static pid_t box_pid;
 static int partial_line;
 static char cleanup_cmd[256];
 
@@ -393,7 +393,7 @@ setup_environment(void)
   return env;
 }
 
-/*** Mount rules ***/
+/*** Directory rules ***/
 
 struct dir_rule {
   char *inside;			// A relative path
@@ -650,10 +650,11 @@ cg_init(void)
   if (!cg_enable)
     return;
 
+  char *cg_root = CONFIG_ISOLATE_CGROUP_ROOT;
   if (!dir_exists(cg_root))
     die("Control group filesystem at %s not mounted", cg_root);
 
-  snprintf(cg_path, sizeof(cg_path), "%s/box-%d", cg_root, BOX_UID);
+  snprintf(cg_path, sizeof(cg_path), "%s/box-%d", cg_root, box_id);
   msg("Using control group %s\n", cg_path);
 }
 
@@ -972,11 +973,11 @@ setup_root(void)
 static void
 setup_credentials(void)
 {
-  if (setresgid(BOX_GID, BOX_GID, BOX_GID) < 0)
+  if (setresgid(box_gid, box_gid, box_gid) < 0)
     die("setresgid: %m");
   if (setgroups(0, NULL) < 0)
     die("setgroups: %m");
-  if (setresuid(BOX_UID, BOX_UID, BOX_UID) < 0)
+  if (setresuid(box_uid, box_uid, box_uid) < 0)
     die("setresuid: %m");
   setpgrp();
 }
@@ -1050,6 +1051,20 @@ box_inside(void *arg)
   die("execve(\"%s\"): %m", args[0]);
 }
 
+static void
+box_init(void)
+{
+  if (box_id < 0 || box_id >= CONFIG_ISOLATE_NUM_BOXES)
+    die("Sandbox ID out of range (allowed: 0-%d)", CONFIG_ISOLATE_NUM_BOXES-1);
+  box_uid = CONFIG_ISOLATE_FIRST_UID + box_id;
+  box_gid = CONFIG_ISOLATE_FIRST_GID + box_id;
+
+  snprintf(box_dir, sizeof(box_dir), "%s/%d", CONFIG_ISOLATE_BOX_DIR, box_id);
+  make_dir(box_dir);
+  if (chdir(box_dir) < 0)
+    die("chdir(%s): %m", box_dir);
+}
+
 /*** Commands ***/
 
 static void
@@ -1063,6 +1078,8 @@ init(void)
     die("Cannot chown box: %m");
 
   cg_prepare();
+
+  puts(box_dir);
 }
 
 static void
@@ -1083,7 +1100,7 @@ run(char **argv)
     die("Box directory not found, did you run `isolate --init'?");
 
   char cmd[256];
-  snprintf(cmd, sizeof(cmd), "chown -R %d.%d box", BOX_UID, BOX_GID);
+  snprintf(cmd, sizeof(cmd), "chown -R %d.%d box", box_uid, box_gid);
   xsystem(cmd);
   snprintf(cleanup_cmd, sizeof(cleanup_cmd), "chown -R %d.%d box", orig_uid, orig_gid);
 
@@ -1112,8 +1129,12 @@ show_version(void)
   printf("Process isolator 1.0\n");
   printf("(c) 2012 Martin Mares and Bernard Blackham\n");
   printf("\nCompile-time configuration:\n");
-  printf("Sandbox directory: %s\n", BOX_DIR);
-  printf("Sandbox credentials: uid=%u gid=%u\n", BOX_UID, BOX_GID);
+  printf("Sandbox directory: %s\n", CONFIG_ISOLATE_BOX_DIR);
+  printf("Sandbox credentials: uid=%u-%u gid=%u-%u\n",
+    CONFIG_ISOLATE_FIRST_UID,
+    CONFIG_ISOLATE_FIRST_UID + CONFIG_ISOLATE_NUM_BOXES - 1,
+    CONFIG_ISOLATE_FIRST_GID,
+    CONFIG_ISOLATE_FIRST_GID + CONFIG_ISOLATE_NUM_BOXES - 1);
 }
 
 /*** Options ***/
@@ -1126,6 +1147,7 @@ usage(void)
 Usage: isolate [<options>] <command>\n\
 \n\
 Options:\n\
+-b, --box-id=<id>\t\tWhen multiple sandboxes are used in parallel, each must get a unique ID\n\
 -c, --cg[=<parent>]\tPut process in a control group (optionally a sub-group of <parent>)\n\
     --cg-mem=<size>\tLimit memory usage of the control group to <size> KB\n\
     --cg-timing\t\tTime limits affects total run time of the control group\n\
@@ -1172,10 +1194,11 @@ enum opt_code {
   OPT_CG_TIMING,
 };
 
-static const char short_opts[] = "c::d:eE:i:k:m:M:o:p::r:t:vw:x:";
+static const char short_opts[] = "c:d:eE:i:k:m:M:o:p::r:t:vw:x:";
 
 static const struct option long_opts[] = {
-  { "cg",		2, NULL, 'c' },
+  { "box-id",		1, NULL, 'b' },
+  { "cg",		1, NULL, 'c' },
   { "cg-mem",		1, NULL, OPT_CG_MEM },
   { "cg-timing",	0, NULL, OPT_CG_TIMING },
   { "cleanup",		0, NULL, OPT_CLEANUP },
@@ -1210,9 +1233,10 @@ main(int argc, char **argv)
   while ((c = getopt_long(argc, argv, short_opts, long_opts, NULL)) >= 0)
     switch (c)
       {
+      case 'b':
+	box_id = atoi(optarg);
+	break;
       case 'c':
-	if (optarg)
-	  cg_root = optarg;
 	cg_enable = 1;
 	break;
       case 'd':
@@ -1292,8 +1316,7 @@ main(int argc, char **argv)
   orig_gid = getgid();
 
   umask(022);
-  if (chdir(BOX_DIR) < 0)
-    die("chdir(%s): %m", BOX_DIR);
+  box_init();
   cg_init();
 
   switch (mode)
