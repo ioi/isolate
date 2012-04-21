@@ -70,7 +70,7 @@ static int read_errors_from_fd;
 static void die(char *msg, ...) NONRET;
 static void cg_stats(void);
 static int get_wall_time_ms(void);
-static int get_run_time_ms(void);
+static int get_run_time_ms(struct rusage *rus);
 
 /*** Meta-files ***/
 
@@ -111,7 +111,7 @@ meta_printf(const char *fmt, ...)
 static void
 final_stats(struct rusage *rus)
 {
-  total_ms = get_run_time_ms();
+  total_ms = get_run_time_ms(rus);
   wall_ms = get_wall_time_ms();
 
   meta_printf("time:%d.%03d\n", total_ms/1000, total_ms%1000);
@@ -613,10 +613,17 @@ get_wall_time_ms(void)
 }
 
 static int
-get_run_time_ms(void)
+get_run_time_ms(struct rusage *rus)
 {
   if (cg_timing)
     return cg_get_run_time_ms();
+
+  if (rus)
+    {
+      struct timeval total;
+      timeradd(&rus->ru_utime, &rus->ru_stime, &total);
+      return total.tv_sec*1000 + total.tv_usec/1000;
+    }
 
   char buf[PROC_BUF_SIZE], *x;
   int utime, stime;
@@ -653,7 +660,7 @@ check_timeout(void)
     }
   if (timeout)
     {
-      int ms = get_run_time_ms();
+      int ms = get_run_time_ms(NULL);
       if (verbose > 1)
 	fprintf(stderr, "[time check: %d msec]\n", ms);
       if (ms > timeout && ms > extra_timeout)
