@@ -83,10 +83,11 @@ OPTIONS
 	Redirect standard error output to 'file'. The 'file' has to be accessible
 	inside the sandbox.
 
-*-p, --processes=*'max'::
+*-p, --processes*[*=*'max']::
 	Permit the program to create up to 'max' processes and/or threads. Please
 	keep in mind that time and memory limit do not work with multiple processes
-	unless you enable the control group mode.
+	unless you enable the control group mode. If 'max' is not given, an arbitrary
+	number of processes can be run.
 
 *-v, --verbose*::
 	Tell the sandbox manager to be verbose and report on what is going on.
@@ -154,10 +155,13 @@ and mounts the proc filesystem at +/proc+.
 
 CONTROL GROUPS
 --------------
-TODO
+Isolate can make use of system control groups provided by the kernel
+to constrain programs consisting of multiple processes. Please note
+that this feature needs special system setup described in the REQUIREMENTS
+section.
 
 *-c, --cg*::
-	TODO
+	Enable use of control groups.
 
 *--cg-mem=*'size'::
 	Limit total memory usage by the whole control group to 'size' kilobytes.
@@ -168,12 +172,61 @@ TODO
 
 META-FILES
 ----------
-TODO
+The meta-file contains miscellaneous meta-information on execution of the
+program within the sandbox. It is a textual file consisting of lines
+of format 'key'*:*'value'. The following keys are defined:
+
+*cg-mem*::
+	When control groups are enabled, this is the total memory use
+	by the whole control group (in kilobytes).
+*csw-forced*::
+	Number of context switches forced by the kernel.
+*csw-voluntary*::
+	Number of context switches caused by the process giving up the CPU
+	voluntarily.
+*exitcode*::
+	The program has exited normally with this exit code.
+*exitsig*::
+	The program has exited after receiving this fatal signal.
+*killed*::
+	Present when the program was terminated by the sandbox
+	(e.g., because it has exceeded the time limit).
+*max-rss*::
+	Maximum resident set size of the process (in kilobytes).
+*message*::
+	Status message, not intended for machine processing.
+	E.g., "Time limit exceeded."
+*status*::
+	Two-letter status code:
+	* *RE* -- run-time error, i.e., exited with a non-zero exit code
+	* *SG* -- program died on a signal
+	* *TO* -- timed out
+	* *XX* -- internal error of the sandbox
+*time*::
+	Run time of the program in fractional seconds.
+*time-wall*::
+	Wall clock time of the program in fractional seconds.
 
 RETURN VALUE
 ------------
-TODO
+When the program inside the sandbox finishes correctly, the sandbox returns 0.
+If it finishes incorrectly, it returns 1.
+All other return codes signal an internal error.
 
 REQUIREMENTS
 ------------
-TODO
+Isolate depends on several advanced features of the Linux kernel. Please
+make sure that your kernel supports
+PID namespaces (+CONFIG_PID_NS+),
+IPC namespaces (+CONFIG_IPC_NS+), and
+network namespaces (+CONFIG_NET_IS+).
+If you want to use control groups, you need
+the cpusets (+CONFIG_CPUSETS+),
+CPU accounting controller (+CONFIG_CGROUP_CPUACCT+), and
+memory resource controller (+CONFIG_CGROUP_MEM_RES_CTLR+).
+
+LICENSE
+-------
+Isolate was written by Martin Mares and Bernard Blackham.
+It can be distributed and used under the terms of the GNU
+General Public License version 2.

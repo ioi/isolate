@@ -10,3 +10,5 @@ Doc: avoid AS randomization
 Doc: avoid cpufreq
 Examine the use of taskstats for measuring memory
 Doc: mount -t cgroup none -o cpuset,cpuacct,memory /sys/fs/cgroup
+Set up quotas
+Switch license to GPL2/GPL3
