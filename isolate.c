@@ -21,12 +21,16 @@
 #include <sched.h>
 #include <time.h>
 #include <grp.h>
+#include <mntent.h>
+#include <limits.h>
 #include <sys/wait.h>
 #include <sys/time.h>
 #include <sys/signal.h>
 #include <sys/resource.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
+#include <sys/quota.h>
+#include <sys/vfs.h>
 
 #define NONRET __attribute__((noreturn))
 #define UNUSED __attribute__((unused))
@@ -39,6 +43,8 @@ static int pass_environ;
 static int verbose;
 static int memory_limit;
 static int stack_limit;
+static int block_quota;
+static int inode_quota;
 static int max_processes = 1;
 static char *redir_stdin, *redir_stdout, *redir_stderr;
 
@@ -759,6 +765,86 @@ cg_remove(void)
     die("Cannot remove control group %s: %m", cg_path);
 }
 
+/*** Disk quotas ***/
+
+static int
+path_begins_with(char *path, char *with)
+{
+  while (*with)
+    if (*path++ != *with++)
+      return 0;
+  return (!*with || *with == '/');
+}
+
+static char *
+find_device(char *path)
+{
+  FILE *f = setmntent("/proc/mounts", "r");
+  if (!f)
+    die("Cannot open /proc/mounts: %m");
+
+  struct mntent *me;
+  int best_len = 0;
+  char *best_dev = NULL;
+  while (me = getmntent(f))
+    {
+      if (!path_begins_with(me->mnt_fsname, "/dev"))
+	continue;
+      if (path_begins_with(path, me->mnt_dir))
+	{
+	  int len = strlen(me->mnt_dir);
+	  if (len > best_len)
+	    {
+	      best_len = len;
+	      free(best_dev);
+	      best_dev = xstrdup(me->mnt_fsname);
+	    }
+	}
+    }
+  endmntent(f);
+  return best_dev;
+}
+
+static void
+set_quota(void)
+{
+  if (!block_quota)
+    return;
+
+  char cwd[PATH_MAX];
+  if (!getcwd(cwd, sizeof(cwd)))
+    die("getcwd: %m");
+
+  char *dev = find_device(cwd);
+  if (!dev)
+    die("Cannot identify filesystem which contains %s", cwd);
+  msg("Quota: Mapped path %s to a filesystem on %s\n", cwd, dev);
+
+  // Sanity check
+  struct stat dev_st, cwd_st;
+  if (stat(dev, &dev_st) < 0)
+    die("Cannot identify block device %s: %m", dev);
+  if (!S_ISBLK(dev_st.st_mode))
+    die("Expected that %s is a block device", dev);
+  if (stat(".", &cwd_st) < 0)
+    die("Cannot stat cwd: %m");
+  if (cwd_st.st_dev != dev_st.st_rdev)
+    die("Identified %s as a filesystem on %s, but it is obviously false", cwd, dev);
+
+  struct dqblk dq = {
+    .dqb_bhardlimit = block_quota,
+    .dqb_bsoftlimit = block_quota,
+    .dqb_ihardlimit = inode_quota,
+    .dqb_isoftlimit = inode_quota,
+    .dqb_valid = QIF_LIMITS,
+  };
+  if (quotactl(QCMD(Q_SETQUOTA, USRQUOTA), dev, box_uid, (caddr_t) &dq) < 0)
+    die("Cannot set disk quota: %m");
+  msg("Quota: Set block quota %d and inode quota %d\n", block_quota, inode_quota);
+
+  free(dev);
+}
+
 /*** The keeper process ***/
 
 static void
@@ -1079,6 +1165,7 @@ init(void)
     die("Cannot chown box: %m");
 
   cg_prepare();
+  set_quota();
 
   puts(box_dir);
 }
@@ -1170,6 +1257,7 @@ Options:\n\
 -e, --full-env\t\tInherit full environment of the parent process\n\
 -m, --mem=<size>\tLimit address space to <size> KB\n\
 -M, --meta=<file>\tOutput process information to <file> (name:value)\n\
+-q, --quota=<blk>,<ino>\tSet disk quota to <blk> blocks and <ino> inodes\n\
 -k, --stack=<size>\tLimit stack size to <size> KB (default: 0=unlimited)\n\
 -r, --stderr=<file>\tRedirect stderr to <file>\n\
 -i, --stdin=<file>\tRedirect stdin from <file>\n\
@@ -1197,7 +1285,7 @@ enum opt_code {
   OPT_CG_TIMING,
 };
 
-static const char short_opts[] = "c:d:eE:i:k:m:M:o:p::r:t:vw:x:";
+static const char short_opts[] = "c:d:eE:i:k:m:M:o:p::q:r:t:vw:x:";
 
 static const struct option long_opts[] = {
   { "box-id",		1, NULL, 'b' },
@@ -1213,6 +1301,7 @@ static const struct option long_opts[] = {
   { "mem",		1, NULL, 'm' },
   { "meta",		1, NULL, 'M' },
   { "processes",	2, NULL, 'p' },
+  { "quota",		1, NULL, 'q' },
   { "run",		0, NULL, OPT_RUN },
   { "stack",		1, NULL, 'k' },
   { "stderr",		1, NULL, 'r' },
@@ -1229,6 +1318,7 @@ int
 main(int argc, char **argv)
 {
   int c;
+  char *sep;
   enum opt_code mode = 0;
 
   init_dir_rules();
@@ -1273,6 +1363,13 @@ main(int argc, char **argv)
 	  max_processes = atoi(optarg);
 	else
 	  max_processes = 0;
+	break;
+      case 'q':
+	sep = strchr(optarg, ',');
+	if (!sep)
+	  usage();
+	block_quota = atoi(optarg);
+	inode_quota = atoi(sep+1);
 	break;
       case 'r':
 	redir_stderr = optarg;

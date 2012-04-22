@@ -71,6 +71,10 @@ OPTIONS
 	Limit process stack to 'size' kilobytes. By default, the whole address
 	space is available for the stack, but it is subject to the *--mem* limit.
 
+*-q, --quota=*'blocks'*,*'inodes'::
+	Set disk quota to a given number of blocks and inodes. This requires the
+	filesystem to be mounted with support for quotas.
+
 *-i, --stdin=*'file'::
 	Redirect standard input from 'file'. The 'file' has to be accessible
 	inside the sandbox.
