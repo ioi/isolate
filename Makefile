@@ -15,6 +15,8 @@ $(o)/isolate/isolate.1: $(s)/isolate/isolate.1.txt
 	$(Q)a2x -f manpage -D $(o)/isolate $<
 	$(Q)$(call symlink,$@,run/$(MAN1DIR))
 
-$(o)/isolate/isolate.1.html: $(s)/isolate/isolate.1.txt
+# The dependency on isolate.1 is there to serialize both calls of asciidoc,
+# which does not name temporary files safely.
+$(o)/isolate/isolate.1.html: $(s)/isolate/isolate.1.txt $(o)/isolate/isolate.1
 	$(M)"HTML $<"
 	$(Q)a2x -f xhtml -D $(o)/isolate $<
