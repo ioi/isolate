@@ -67,6 +67,11 @@ OPTIONS
 	is reported, even though it slightly exceeds the limit. Fractional
 	numbers are again allowed.
 
+*-b, --box-id=*'id'::
+	When you run multiple sandboxes in parallel, you have to assign each unique
+	IDs to them by this option. See the discussion on UIDs in the INSTALLATION
+	section. The ID defaults to 0.
+
 *-k, --stack=*'size'::
 	Limit process stack to 'size' kilobytes. By default, the whole address
 	space is available for the stack, but it is subject to the *--mem* limit.
@@ -217,7 +222,7 @@ When the program inside the sandbox finishes correctly, the sandbox returns 0.
 If it finishes incorrectly, it returns 1.
 All other return codes signal an internal error.
 
-REQUIREMENTS
+INSTALLATION
 ------------
 Isolate depends on several advanced features of the Linux kernel. Please
 make sure that your kernel supports
@@ -228,6 +233,15 @@ If you want to use control groups, you need
 the cpusets (+CONFIG_CPUSETS+),
 CPU accounting controller (+CONFIG_CGROUP_CPUACCT+), and
 memory resource controller (+CONFIG_CGROUP_MEM_RES_CTLR+).
+
+Isolate is designed to run setuid to root. The sub-process inside the sandbox
+then switches to a non-privileged user ID (different for each *--box-id*).
+The range of UIDs available and several filesystem paths are embedded in the
+isolate's binary during compilation; please see +default.cfg+ in the source
+tree for description.
+
+Before you run isolate with control groups, you have to mount the control group
+filesystem by doing "+mount -t cgroup none -o cpuset,cpuacct,memory /sys/fs/cgroup+".
 
 LICENSE
 -------
