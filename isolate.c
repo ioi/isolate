@@ -1405,7 +1405,10 @@ main(int argc, char **argv)
       case OPT_RUN:
       case OPT_CLEANUP:
       case OPT_VERSION:
-	mode = c;
+	if (!mode || mode == c)
+	  mode = c;
+	else
+	  usage("Only one command is allowed.\n");
 	break;
       case OPT_CG_MEM:
 	cg_memory_limit = atoi(optarg);
