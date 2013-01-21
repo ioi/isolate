@@ -92,6 +92,10 @@ OPTIONS
 	Redirect standard error output to 'file'. The 'file' has to be accessible
 	inside the sandbox.
 
+*-c, --chdir=*'dir'::
+	Change directory to 'dir' before executing the program. This path must be
+	relative to the root of the sandbox.
+
 *-p, --processes*[*=*'max']::
 	Permit the program to create up to 'max' processes and/or threads. Please
 	keep in mind that time and memory limit do not work with multiple processes
@@ -169,7 +173,7 @@ to constrain programs consisting of multiple processes. Please note
 that this feature needs special system setup described in the REQUIREMENTS
 section.
 
-*-c, --cg*::
+*--cg*::
 	Enable use of control groups.
 
 *--cg-mem=*'size'::

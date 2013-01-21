@@ -47,6 +47,7 @@ static int block_quota;
 static int inode_quota;
 static int max_processes = 1;
 static char *redir_stdin, *redir_stdout, *redir_stderr;
+static char *set_cwd;
 
 static int cg_enable;
 static int cg_memory_limit;
@@ -1134,6 +1135,9 @@ box_inside(void *arg)
   setup_rlimits();
   char **env = setup_environment();
 
+  if (set_cwd && chdir(set_cwd))
+    die("chdir: %m");
+
   execve(args[0], args, env);
   die("execve(\"%s\"): %m", args[0]);
 }
@@ -1287,6 +1291,7 @@ enum opt_code {
   OPT_RUN,
   OPT_CLEANUP,
   OPT_VERSION,
+  OPT_CG,
   OPT_CG_MEM,
   OPT_CG_TIMING,
 };
@@ -1295,7 +1300,8 @@ static const char short_opts[] = "b:c:d:eE:i:k:m:M:o:p::q:r:t:vw:x:";
 
 static const struct option long_opts[] = {
   { "box-id",		1, NULL, 'b' },
-  { "cg",		1, NULL, 'c' },
+  { "chdir",		1, NULL, 'c' },
+  { "cg",		0, NULL, OPT_CG },
   { "cg-mem",		1, NULL, OPT_CG_MEM },
   { "cg-timing",	0, NULL, OPT_CG_TIMING },
   { "cleanup",		0, NULL, OPT_CLEANUP },
@@ -1336,6 +1342,9 @@ main(int argc, char **argv)
 	box_id = atoi(optarg);
 	break;
       case 'c':
+	set_cwd = optarg;
+	break;
+      case OPT_CG:
 	cg_enable = 1;
 	break;
       case 'd':
