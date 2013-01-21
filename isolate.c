@@ -1,8 +1,8 @@
 /*
  *	A Process Isolator based on Linux Containers
  *
- *	(c) 2012 Martin Mares <mj@ucw.cz>
- *	(c) 2012 Bernard Blackham <bernard@blackham.com.au>
+ *	(c) 2012-2013 Martin Mares <mj@ucw.cz>
+ *	(c) 2012-2013 Bernard Blackham <bernard@blackham.com.au>
  */
 
 #define _GNU_SOURCE
