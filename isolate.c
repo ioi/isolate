@@ -1285,7 +1285,7 @@ enum opt_code {
   OPT_CG_TIMING,
 };
 
-static const char short_opts[] = "c:d:eE:i:k:m:M:o:p::q:r:t:vw:x:";
+static const char short_opts[] = "b:c:d:eE:i:k:m:M:o:p::q:r:t:vw:x:";
 
 static const struct option long_opts[] = {
   { "box-id",		1, NULL, 'b' },
