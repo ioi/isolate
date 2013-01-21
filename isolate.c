@@ -1229,10 +1229,16 @@ show_version(void)
 
 /*** Options ***/
 
-static void
-usage(void)
+static void __attribute__((format(printf,1,2)))
+usage(const char *msg, ...)
 {
-  fprintf(stderr, "Invalid arguments!\n");
+  if (msg != NULL)
+    {
+      va_list args;
+      va_start(args, msg);
+      vfprintf(stderr, msg, args);
+      va_end(args);
+    }
   printf("\
 Usage: isolate [<options>] <command>\n\
 \n\
@@ -1334,14 +1340,14 @@ main(int argc, char **argv)
 	break;
       case 'd':
 	if (!set_dir_action(optarg))
-	  usage();
+	  usage("Invalid directory specified: %s\n", optarg);
 	break;
       case 'e':
 	pass_environ = 1;
 	break;
       case 'E':
 	if (!set_env_action(optarg))
-	  usage();
+	  usage("Invalid environment specified: %s\n", optarg);
 	break;
       case 'k':
 	stack_limit = atoi(optarg);
@@ -1367,7 +1373,7 @@ main(int argc, char **argv)
       case 'q':
 	sep = strchr(optarg, ',');
 	if (!sep)
-	  usage();
+	  usage("Invalid quota specified: %s\n", optarg);
 	block_quota = atoi(optarg);
 	inode_quota = atoi(sep+1);
 	break;
@@ -1399,11 +1405,11 @@ main(int argc, char **argv)
 	cg_timing = 1;
 	break;
       default:
-	usage();
+	usage(NULL);
       }
 
   if (!mode)
-    usage();
+    usage("Please specify an isolate command (e.g. --init, --run).\n");
   if (mode == OPT_VERSION)
     {
       show_version();
@@ -1423,17 +1429,17 @@ main(int argc, char **argv)
     {
     case OPT_INIT:
       if (optind < argc)
-	usage();
+	usage("--init mode takes no parameters\n");
       init();
       break;
     case OPT_RUN:
       if (optind >= argc)
-	usage();
+	usage("--run mode requires a command to run\n");
       run(argv+optind);
       break;
     case OPT_CLEANUP:
       if (optind < argc)
-	usage();
+	usage("--cleanup mode takes no parameters\n");
       cleanup();
       break;
     default:
