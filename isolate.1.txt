@@ -245,7 +245,11 @@ isolate's binary during compilation; please see +default.cfg+ in the source
 tree for description.
 
 Before you run isolate with control groups, you have to mount the control group
-filesystem by doing "+mount -t cgroup none -o cpuset,cpuacct,memory /sys/fs/cgroup+".
+filesystem. Most modern Linux distributions use libcgroup, which mounts a tmpfs
+at /sys/fs/cgroup, with individual controllers mounted within subdirectories.
+It is recommended to use your distribution's cgroup configuration support.
+Debian-based distributions have a choice of the cgroup-lite or cgroup-bin
+packages; Red Hat-based distributions provide the libcgroup package.
 
 LICENSE
 -------
