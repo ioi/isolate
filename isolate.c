@@ -647,7 +647,11 @@ cg_read(cg_controller controller, const char *attr, char *buf)
 
   int n = read(fd, buf, CG_BUFSIZE);
   if (n < 0)
-    die("Cannot read %s: %m", path);
+    {
+      if (maybe)
+	return 0;
+      die("Cannot read %s: %m", path);
+    }
   if (n >= CG_BUFSIZE - 1)
     die("Attribute %s too long", path);
   if (n > 0 && buf[n-1] == '\n')
@@ -773,7 +777,7 @@ cg_enter(void)
   if (cg_memory_limit)
     {
       cg_write(CG_MEMORY, "memory.limit_in_bytes", "%lld\n", (long long) cg_memory_limit << 10);
-      cg_write(CG_MEMORY, "memory.memsw.limit_in_bytes", "%lld\n", (long long) cg_memory_limit << 10);
+      cg_write(CG_MEMORY, "?memory.memsw.limit_in_bytes", "%lld\n", (long long) cg_memory_limit << 10);
     }
 
   if (cg_timing)
