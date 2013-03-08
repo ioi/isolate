@@ -1242,7 +1242,7 @@ static void
 init(void)
 {
   msg("Preparing sandbox directory\n");
-  xsystem("rm -rf box");
+  xsystem("/bin/rm -rf box");
   if (mkdir("box", 0700) < 0)
     die("Cannot create box: %m");
   if (chown("box", orig_uid, orig_gid) < 0)
@@ -1261,7 +1261,7 @@ cleanup(void)
     die("Box directory not found, there isn't anything to clean up");
 
   msg("Deleting sandbox directory\n");
-  xsystem("rm -rf *");
+  xsystem("/bin/rm -rf *");
   if (rmdir(box_dir) < 0)
     die("Cannot remove %s: %m", box_dir);
   cg_remove();
@@ -1274,9 +1274,9 @@ run(char **argv)
     die("Box directory not found, did you run `isolate --init'?");
 
   char cmd[256];
-  snprintf(cmd, sizeof(cmd), "chown -R %d.%d box", box_uid, box_gid);
+  snprintf(cmd, sizeof(cmd), "/bin/chown -R %d.%d box", box_uid, box_gid);
   xsystem(cmd);
-  snprintf(cleanup_cmd, sizeof(cleanup_cmd), "chown -R %d.%d box", orig_uid, orig_gid);
+  snprintf(cleanup_cmd, sizeof(cleanup_cmd), "/bin/chown -R %d.%d box", orig_uid, orig_gid);
 
   if (pipe(error_pipes) < 0)
     die("pipe: %m");
