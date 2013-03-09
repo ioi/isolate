@@ -20,6 +20,7 @@
 #include <getopt.h>
 #include <sched.h>
 #include <time.h>
+#include <ftw.h>
 #include <grp.h>
 #include <mntent.h>
 #include <limits.h>
@@ -63,7 +64,7 @@ static uid_t orig_uid;
 static gid_t orig_gid;
 
 static int partial_line;
-static char cleanup_cmd[256];
+static int cleanup_ownership;
 
 static struct timeval start_time;
 static int ticks_per_sec;
@@ -78,6 +79,8 @@ static void die(char *msg, ...) NONRET;
 static void cg_stats(void);
 static int get_wall_time_ms(void);
 static int get_run_time_ms(struct rusage *rus);
+
+static void chowntree(char *path, uid_t uid, gid_t gid);
 
 /*** Meta-files ***/
 
@@ -132,16 +135,6 @@ final_stats(struct rusage *rus)
 
 /*** Messages and exits ***/
 
-static void
-xsystem(const char *cmd)
-{
-  int ret = system(cmd);
-  if (ret < 0)
-    die("system(\"%s\"): %m", cmd);
-  if (!WIFEXITED(ret) || WEXITSTATUS(ret))
-    die("system(\"%s\"): Exited with status %d", cmd, ret);
-}
-
 static void NONRET
 box_exit(int rc)
 {
@@ -162,8 +155,10 @@ box_exit(int rc)
 	final_stats(&rus);
     }
 
-  if (rc < 2 && cleanup_cmd[0])
-    xsystem(cleanup_cmd);
+  if (rc < 2 && cleanup_ownership)
+    {
+      chowntree("box", orig_uid, orig_gid);
+    }
 
   meta_close();
   exit(rc);
@@ -263,6 +258,47 @@ static int dir_exists(char *path)
 {
   struct stat st;
   return (stat(path, &st) >= 0 && S_ISDIR(st.st_mode));
+}
+
+static int rmtree_helper(const char *fpath, const struct stat *sb,
+    int typeflag, struct FTW *ftwbuf)
+{
+  if (S_ISDIR(sb->st_mode))
+    {
+      if (rmdir(fpath) < 0)
+	die("Cannot rmdir %s: %m", fpath);
+    }
+  else
+    {
+      if (unlink(fpath) < 0)
+	die("Cannot unlink %s: %m", fpath);
+    }
+  return FTW_CONTINUE;
+}
+
+static void
+rmtree(char *path)
+{
+  nftw(path, rmtree_helper, 32, FTW_MOUNT | FTW_PHYS | FTW_DEPTH);
+}
+
+static uid_t chown_uid;
+static gid_t chown_gid;
+static int chowntree_helper(const char *fpath, const struct stat *sb,
+    int typeflag, struct FTW *ftwbuf)
+{
+  if (lchown(fpath, chown_uid, chown_gid) < 0)
+    die("Cannot chown %s: %m", fpath);
+  else
+    return FTW_CONTINUE;
+}
+
+static void
+chowntree(char *path, uid_t uid, gid_t gid)
+{
+  chown_uid = uid;
+  chown_gid = gid;
+  nftw(path, chowntree_helper, 32, FTW_MOUNT | FTW_PHYS);
 }
 
 /*** Environment rules ***/
@@ -1242,7 +1278,7 @@ static void
 init(void)
 {
   msg("Preparing sandbox directory\n");
-  xsystem("/bin/rm -rf box");
+  rmtree("box");
   if (mkdir("box", 0700) < 0)
     die("Cannot create box: %m");
   if (chown("box", orig_uid, orig_gid) < 0)
@@ -1261,9 +1297,7 @@ cleanup(void)
     die("Box directory not found, there isn't anything to clean up");
 
   msg("Deleting sandbox directory\n");
-  xsystem("/bin/rm -rf *");
-  if (rmdir(box_dir) < 0)
-    die("Cannot remove %s: %m", box_dir);
+  rmtree(box_dir);
   cg_remove();
 }
 
@@ -1273,10 +1307,8 @@ run(char **argv)
   if (!dir_exists("box"))
     die("Box directory not found, did you run `isolate --init'?");
 
-  char cmd[256];
-  snprintf(cmd, sizeof(cmd), "/bin/chown -R %d.%d box", box_uid, box_gid);
-  xsystem(cmd);
-  snprintf(cleanup_cmd, sizeof(cleanup_cmd), "/bin/chown -R %d.%d box", orig_uid, orig_gid);
+  chowntree("box", box_uid, box_gid);
+  cleanup_ownership = 1;
 
   if (pipe(error_pipes) < 0)
     die("pipe: %m");
