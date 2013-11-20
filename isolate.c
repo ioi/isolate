@@ -1244,6 +1244,7 @@ box_inside(void *arg)
   char **args = arg;
   write_errors_to_fd = error_pipes[1];
   close(error_pipes[0]);
+  meta_close();
 
   cg_enter();
   setup_root();
