@@ -261,7 +261,7 @@ static int dir_exists(char *path)
 }
 
 static int rmtree_helper(const char *fpath, const struct stat *sb,
-    int typeflag, struct FTW *ftwbuf)
+    int typeflag UNUSED, struct FTW *ftwbuf UNUSED)
 {
   if (S_ISDIR(sb->st_mode))
     {
@@ -284,8 +284,8 @@ rmtree(char *path)
 
 static uid_t chown_uid;
 static gid_t chown_gid;
-static int chowntree_helper(const char *fpath, const struct stat *sb,
-    int typeflag, struct FTW *ftwbuf)
+static int chowntree_helper(const char *fpath, const struct stat *sb UNUSED,
+    int typeflag UNUSED, struct FTW *ftwbuf UNUSED)
 {
   if (lchown(fpath, chown_uid, chown_gid) < 0)
     die("Cannot chown %s: %m", fpath);
