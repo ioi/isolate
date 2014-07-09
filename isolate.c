@@ -644,7 +644,7 @@ static const char *cg_controller_name(cg_controller c)
   return cg_controllers[c].name;
 }
 
-static const int cg_controller_optional(cg_controller c)
+static int cg_controller_optional(cg_controller c)
 {
   return cg_controllers[c].optional;
 }
