@@ -32,6 +32,7 @@
 #include <sys/stat.h>
 #include <sys/quota.h>
 #include <sys/vfs.h>
+#include <sys/fsuid.h>
 
 #define NONRET __attribute__((noreturn))
 #define UNUSED __attribute__((unused))
@@ -94,7 +95,11 @@ meta_open(const char *name)
       metafile = stdout;
       return;
     }
+  if (setfsuid(getuid()) < 0)
+    die("Failed to switch FS UID: %m");
   metafile = fopen(name, "w");
+  if (setfsuid(geteuid()) < 0)
+    die("Failed to switch FS UID back: %m");
   if (!metafile)
     die("Failed to open metafile '%s'",name);
 }
