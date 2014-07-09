@@ -156,9 +156,7 @@ box_exit(int rc)
     }
 
   if (rc < 2 && cleanup_ownership)
-    {
-      chowntree("box", orig_uid, orig_gid);
-    }
+    chowntree("box", orig_uid, orig_gid);
 
   meta_close();
   exit(rc);
@@ -284,6 +282,7 @@ rmtree(char *path)
 
 static uid_t chown_uid;
 static gid_t chown_gid;
+
 static int chowntree_helper(const char *fpath, const struct stat *sb UNUSED,
     int typeflag UNUSED, struct FTW *ftwbuf UNUSED)
 {
@@ -637,7 +636,7 @@ static const struct cg_controller_desc cg_controllers[CG_NUM_CONTROLLERS+1] = {
 
 #define FOREACH_CG_CONTROLLER(_controller) \
   for (cg_controller (_controller) = 0; \
-      (_controller) < CG_NUM_CONTROLLERS; (_controller)++)
+       (_controller) < CG_NUM_CONTROLLERS; (_controller)++)
 
 static const char *cg_controller_name(cg_controller c)
 {
@@ -864,10 +863,12 @@ cg_remove(void)
 
   FOREACH_CG_CONTROLLER(controller)
     {
-      if (cg_controller_optional(controller)) {
-	if (!cg_read(controller, "?tasks", buf))
-	  continue;
-      } else
+      if (cg_controller_optional(controller))
+	{
+	  if (!cg_read(controller, "?tasks", buf))
+	    continue;
+	}
+      else
 	cg_read(controller, "tasks", buf);
 
       if (buf[0])
