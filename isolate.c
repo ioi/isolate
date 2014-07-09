@@ -1518,7 +1518,7 @@ main(int argc, char **argv)
       case OPT_RUN:
       case OPT_CLEANUP:
       case OPT_VERSION:
-	if (!mode || mode == c)
+	if (!mode || (int) mode == c)
 	  mode = c;
 	else
 	  usage("Only one command is allowed.\n");
