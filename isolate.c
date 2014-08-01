@@ -1375,9 +1375,10 @@ Usage: isolate [<options>] <command>\n\
 \n\
 Options:\n\
 -b, --box-id=<id>\tWhen multiple sandboxes are used in parallel, each must get a unique ID\n\
--c, --cg[=<parent>]\tPut process in a control group (optionally a sub-group of <parent>)\n\
+    --cg\t\tEnable use of control groups\n\
     --cg-mem=<size>\tLimit memory usage of the control group to <size> KB\n\
     --cg-timing\t\tTime limits affects total run time of the control group\n\
+-c, --chdir=<dir>\tChange directory to <dir> before executing the program\n\
 -d, --dir=<dir>\t\tMake a directory <dir> visible inside the sandbox\n\
     --dir=<in>=<out>\tMake a directory <out> outside visible as <in> inside\n\
     --dir=<in>=\t\tDelete a previously defined directory rule (even a default one)\n\

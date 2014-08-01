@@ -232,7 +232,7 @@ Isolate depends on several advanced features of the Linux kernel. Please
 make sure that your kernel supports
 PID namespaces (+CONFIG_PID_NS+),
 IPC namespaces (+CONFIG_IPC_NS+), and
-network namespaces (+CONFIG_NET_IS+).
+network namespaces (+CONFIG_NET_NS+).
 If you want to use control groups, you need
 the cpusets (+CONFIG_CPUSETS+),
 CPU accounting controller (+CONFIG_CGROUP_CPUACCT+), and
