@@ -53,6 +53,7 @@ static int wall_timeout;
 static int extra_timeout;
 static int pass_environ;
 static int verbose;
+static int fsize_limit;
 static int memory_limit;
 static int stack_limit;
 static int block_quota;
@@ -1251,6 +1252,9 @@ setup_rlimits(void)
   if (memory_limit)
     RLIM(AS, (rlim_t)memory_limit * 1024);
 
+  if (fsize_limit)
+    RLIM(FSIZE, (rlim_t)fsize_limit * 1024);
+
   RLIM(STACK, (stack_limit ? (rlim_t)stack_limit * 1024 : RLIM_INFINITY));
   RLIM(NOFILE, 64);
   RLIM(MEMLOCK, 0);
@@ -1398,6 +1402,7 @@ Options:\n\
 \t\t\t\tmaybe\tSkip the rule if <out> does not exist\n\
 \t\t\t\tnoexec\tDo not allow execution of binaries\n\
 \t\t\t\trw\tAllow read-write access\n\
+-f, --fsize=<size>\tMax size (in KB) of files that can be created\n\
 -E, --env=<var>\t\tInherit the environment variable <var> from the parent process\n\
 -E, --env=<var>=<val>\tSet the environment variable <var> to <val>; unset it if <var> is empty\n\
 -x, --extra-time=<time>\tSet extra timeout, before which a timing-out program is not yet killed,\n\
@@ -1444,6 +1449,7 @@ static const struct option long_opts[] = {
   { "cg-timing",	0, NULL, OPT_CG_TIMING },
   { "cleanup",		0, NULL, OPT_CLEANUP },
   { "dir",		1, NULL, 'd' },
+  { "fsize",           1, NULL, 'f' },
   { "env",		1, NULL, 'E' },
   { "extra-time",	1, NULL, 'x' },
   { "full-env",		0, NULL, 'e' },
@@ -1489,6 +1495,9 @@ main(int argc, char **argv)
 	if (!set_dir_action(optarg))
 	  usage("Invalid directory specified: %s\n", optarg);
 	break;
+      case 'f':
+        fsize_limit = atoi(optarg);
+        break;
       case 'e':
 	pass_environ = 1;
 	break;
