@@ -1,7 +1,7 @@
 /*
  *	A Process Isolator based on Linux Containers
  *
- *	(c) 2012-2014 Martin Mares <mj@ucw.cz>
+ *	(c) 2012-2015 Martin Mares <mj@ucw.cz>
  *	(c) 2012-2014 Bernard Blackham <bernard@blackham.com.au>
  */
 
@@ -1231,7 +1231,7 @@ setup_rlimits(void)
 #define RLIM(res, val) setup_rlim("RLIMIT_" #res, RLIMIT_##res, val)
 
   if (memory_limit)
-    RLIM(AS, memory_limit * 1024);
+    RLIM(AS, (rlim_t)memory_limit * 1024);
 
   RLIM(STACK, (stack_limit ? (rlim_t)stack_limit * 1024 : RLIM_INFINITY));
   RLIM(NOFILE, 64);
