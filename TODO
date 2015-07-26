@@ -1,6 +1,3 @@
-
-Isolate
-~~~~~~~
 Installation
 Test: ptrace self
 Test: SIGSTOP

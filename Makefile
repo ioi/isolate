@@ -1,22 +1,24 @@
-# Makefile for MO-Eval isolator
-# (c) 2012 Martin Mares <mj@ucw.cz>
+# Makefile for Isolate
+# (c) 2015 Martin Mares <mj@ucw.cz>
 
-DIRS+=isolate
-PROGS+=$(o)/isolate/isolate
+all: isolate isolate.1 isolate.1.html
 
-DOCS+=$(o)/isolate/isolate.1 $(o)/isolate/isolate.1.html
-MAN1DIR=share/man/man1
-EXTRA_RUNDIRS+=$(MAN1DIR)
+CC=gcc
+CFLAGS=-std=gnu99 -Wall -Wextra -Wno-parentheses -Wno-unused-result -Wno-missing-field-initializers
 
-$(o)/isolate/isolate: $(o)/isolate/isolate.o
+isolate: isolate.c config.h
+	$(CC) $(CFLAGS) -o $@ $^
 
-$(o)/isolate/isolate.1: $(s)/isolate/isolate.1.txt
-	$(M)"MAN $<"
-	$(Q)a2x -f manpage -D $(o)/isolate $<
-	$(Q)$(call symlink,$@,run/$(MAN1DIR))
+isolate.1: isolate.1.txt
+	a2x -f manpage -D . $<
 
 # The dependency on isolate.1 is there to serialize both calls of asciidoc,
 # which does not name temporary files safely.
-$(o)/isolate/isolate.1.html: $(s)/isolate/isolate.1.txt $(o)/isolate/isolate.1
-	$(M)"HTML $<"
-	$(Q)a2x -f xhtml -D $(o)/isolate $<
+isolate.1.html: isolate.1.txt isolate.1
+	a2x -f xhtml -D . $<
+
+clean:
+	rm -f isolate isolate.1 isolate.1.html
+	rm -f docbook-xsl.css
+
+.PHONY: all clean

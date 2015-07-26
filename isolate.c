@@ -7,7 +7,7 @@
 
 #define _GNU_SOURCE
 
-#include "autoconf.h"
+#include "config.h"
 
 #include <errno.h>
 #include <stdio.h>
