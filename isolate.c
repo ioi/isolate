@@ -36,9 +36,11 @@
 
 /* May not be defined in older glibc headers */
 #ifndef MS_PRIVATE
+#warning "Working around old glibc: no MS_PRIVATE"
 #define MS_PRIVATE (1 << 18)
 #endif
 #ifndef MS_REC
+#warning "Working around old glibc: no MS_REC"
 #define MS_REC     (1 << 14)
 #endif
 
