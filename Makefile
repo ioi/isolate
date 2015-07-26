@@ -6,6 +6,12 @@ all: isolate isolate.1 isolate.1.html
 CC=gcc
 CFLAGS=-std=gnu99 -Wall -Wextra -Wno-parentheses -Wno-unused-result -Wno-missing-field-initializers
 
+VERSION=1.1
+YEAR=2015
+BUILD_DATE:=$(shell date '+%Y-%m-%d')
+BUILD_COMMIT:=$(shell if [ -d .git ] ; then git describe --always ; else echo '<unknown>' ; fi)
+CFLAGS += -DVERSION='"$(VERSION)"' -DYEAR='"$(YEAR)"' -DBUILD_DATE='"$(BUILD_DATE)"' -DBUILD_COMMIT='"$(BUILD_COMMIT)"'
+
 isolate: isolate.c config.h
 	$(CC) $(CFLAGS) -o $@ $^
 

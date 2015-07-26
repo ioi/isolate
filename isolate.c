@@ -1361,8 +1361,9 @@ run(char **argv)
 static void
 show_version(void)
 {
-  printf("Process isolator 1.0\n");
-  printf("(c) 2012 Martin Mares and Bernard Blackham\n");
+  printf("The process isolator " VERSION "\n");
+  printf("(c) 2012--" YEAR " Martin Mares and Bernard Blackham\n");
+  printf("Built on " BUILD_DATE " from Git commit " BUILD_COMMIT "\n");
   printf("\nCompile-time configuration:\n");
   printf("Sandbox directory: %s\n", CONFIG_ISOLATE_BOX_DIR);
   printf("Sandbox credentials: uid=%u-%u gid=%u-%u\n",
