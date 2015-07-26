@@ -76,6 +76,12 @@ OPTIONS
 	Limit process stack to 'size' kilobytes. By default, the whole address
 	space is available for the stack, but it is subject to the *--mem* limit.
 
+*-f, --fsize=*'size'::
+	Limit size of files created (or modified) by the program to 'size' kilobytes.
+	In most cases, it is better to restrict overall disk usage by a disk quota
+	(see below). This option can help in cases when quotas are not enabled
+	on the underlying filesystem.
+
 *-q, --quota=*'blocks'*,*'inodes'::
 	Set disk quota to a given number of blocks and inodes. This requires the
 	filesystem to be mounted with support for quotas.
