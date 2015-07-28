@@ -12,6 +12,13 @@ BUILD_DATE:=$(shell date '+%Y-%m-%d')
 BUILD_COMMIT:=$(shell if [ -d .git ] ; then git describe --always ; else echo '<unknown>' ; fi)
 CFLAGS += -DVERSION='"$(VERSION)"' -DYEAR='"$(YEAR)"' -DBUILD_DATE='"$(BUILD_DATE)"' -DBUILD_COMMIT='"$(BUILD_COMMIT)"'
 
+PREFIX = $(DESTDIR)/usr/local
+BINDIR = $(PREFIX)/bin
+DATAROOTDIR = $(PREFIX)/share
+DATADIR = $(DATAROOTDIR)
+MANDIR = $(DATADIR)/man
+MAN1DIR = $(MANDIR)/man1
+
 isolate: isolate.c config.h
 	$(CC) $(CFLAGS) -o $@ $^
 
@@ -27,4 +34,11 @@ clean:
 	rm -f isolate isolate.1 isolate.1.html
 	rm -f docbook-xsl.css
 
-.PHONY: all clean
+install: isolate
+	install -D $< $(BINDIR)/$<
+	chmod u+s $(BINDIR)/$<
+
+install-doc: isolate.1
+	install -D $< $(MAN1DIR)/$<
+
+.PHONY: all clean install install-doc
