@@ -261,6 +261,20 @@ filesystem is enabled and mounted.  Most modern Linux distributions already
 provide cgroup support through a tmpfs mounted at /sys/fs/cgroup, with
 individual controllers mounted within subdirectories.
 
+REPRODUCIBILITY
+---------------
+
+The reproducibility of results can be improved by tuning some kernel
+parameters:
+
+* Disable address space randomization: +sysctl kernel.randomize_va_space=0+.
+Address space randomization can affect timing, memory usage, and program
+behavior. This setting can be made persistent through /etc/sysctl.d/.
+
+* Disable dynamic CPU frequency scaling. This requires setting the cpufreq
+scaling governor to +performance+. The process for doing this varies between
+distributions.
+
 LICENSE
 -------
 Isolate was written by Martin Mares and Bernard Blackham.
