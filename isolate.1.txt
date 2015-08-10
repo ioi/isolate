@@ -180,14 +180,17 @@ that this feature needs special system setup described in the REQUIREMENTS
 section.
 
 *--cg*::
-	Enable use of control groups.
+	Enable use of control groups. This should be specified with *--init*,
+	*--run* and *--cleanup*.
 
 *--cg-mem=*'size'::
 	Limit total memory usage by the whole control group to 'size' kilobytes.
+	This should be specified with *--run*.
 
 *--cg-timing*::
 	Use control groups for timing, so that the *--time* switch affects the
 	total run time of all processes and threads in the control group.
+	This should be specified with *--run*.
 
 META-FILES
 ----------
