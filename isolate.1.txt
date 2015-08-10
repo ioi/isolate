@@ -106,7 +106,7 @@ OPTIONS
 	Permit the program to create up to 'max' processes and/or threads. Please
 	keep in mind that time and memory limit do not work with multiple processes
 	unless you enable the control group mode. If 'max' is not given, an arbitrary
-	number of processes can be run.
+	number of processes can be run. By default, only one process is permitted.
 
 *-v, --verbose*::
 	Tell the sandbox manager to be verbose and report on what is going on.
@@ -242,7 +242,13 @@ network namespaces (+CONFIG_NET_NS+).
 If you want to use control groups, you need
 the cpusets (+CONFIG_CPUSETS+),
 CPU accounting controller (+CONFIG_CGROUP_CPUACCT+), and
-memory resource controller (+CONFIG_CGROUP_MEM_RES_CTLR+).
+memory resource controller (+CONFIG_MEMCG+). If your machine has swap enabled,
+you should also enable the swap controller (+CONFIG_MEMCG_SWAP+).
+
+Debian 7.x and newer require enabling the memory and swap cgroup controllers by
+adding the parameters "cgroup_enable=memory swapaccount=1" to the kernel
+command-line, which can be set using GRUB_CMDLINE_LINUX_DEFAULT in
+/etc/default/grub.
 
 Isolate is designed to run setuid to root. The sub-process inside the sandbox
 then switches to a non-privileged user ID (different for each *--box-id*).
@@ -250,12 +256,10 @@ The range of UIDs available and several filesystem paths are embedded in the
 isolate's binary during compilation; please see +default.cfg+ in the source
 tree for description.
 
-Before you run isolate with control groups, you have to mount the control group
-filesystem. Most modern Linux distributions use libcgroup, which mounts a tmpfs
-at /sys/fs/cgroup, with individual controllers mounted within subdirectories.
-It is recommended to use your distribution's cgroup configuration support.
-Debian-based distributions have a choice of the cgroup-lite or cgroup-bin
-packages; Red Hat-based distributions provide the libcgroup package.
+Before you run isolate with control groups, you need to ensure that the cgroup
+filesystem is enabled and mounted.  Most modern Linux distributions already
+provide cgroup support through a tmpfs mounted at /sys/fs/cgroup, with
+individual controllers mounted within subdirectories.
 
 LICENSE
 -------
