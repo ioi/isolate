@@ -990,10 +990,10 @@ signal_alarm(int unused UNUSED)
 }
 
 static void
-signal_int(int unused UNUSED)
+signal_int(int signum)
 {
   /* Interrupts are fatal, so no synchronization requirements. */
-  meta_printf("exitsig:%d\n", SIGINT);
+  meta_printf("exitsig:%d\n", signum);
   err("SG: Interrupted");
 }
 
@@ -1092,7 +1092,17 @@ box_keeper(void)
   struct sigaction sa;
   bzero(&sa, sizeof(sa));
   sa.sa_handler = signal_int;
+  sigaction(SIGHUP, &sa, NULL);
   sigaction(SIGINT, &sa, NULL);
+  sigaction(SIGQUIT, &sa, NULL);
+  sigaction(SIGILL, &sa, NULL);
+  sigaction(SIGABRT, &sa, NULL);
+  sigaction(SIGFPE, &sa, NULL);
+  sigaction(SIGSEGV, &sa, NULL);
+  sigaction(SIGPIPE, &sa, NULL);
+  sigaction(SIGTERM, &sa, NULL);
+  sigaction(SIGUSR1, &sa, NULL);
+  sigaction(SIGUSR2, &sa, NULL);
 
   gettimeofday(&start_time, NULL);
   ticks_per_sec = sysconf(_SC_CLK_TCK);
