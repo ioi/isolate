@@ -1466,7 +1466,7 @@ static const struct option long_opts[] = {
   { "cg-timing",	0, NULL, OPT_CG_TIMING },
   { "cleanup",		0, NULL, OPT_CLEANUP },
   { "dir",		1, NULL, 'd' },
-  { "fsize",           1, NULL, 'f' },
+  { "fsize",		1, NULL, 'f' },
   { "env",		1, NULL, 'E' },
   { "extra-time",	1, NULL, 'x' },
   { "full-env",		0, NULL, 'e' },
