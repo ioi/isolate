@@ -678,6 +678,7 @@ cg_makepath(char *buf, size_t len, cg_controller c, const char *attr)
 static int
 cg_read(cg_controller controller, const char *attr, char *buf)
 {
+  int result = 0;
   int maybe = 0;
   if (attr[0] == '?')
     {
@@ -692,7 +693,7 @@ cg_read(cg_controller controller, const char *attr, char *buf)
   if (fd < 0)
     {
       if (maybe)
-	return 0;
+	goto fail;
       die("Cannot read %s: %m", path);
     }
 
@@ -700,7 +701,7 @@ cg_read(cg_controller controller, const char *attr, char *buf)
   if (n < 0)
     {
       if (maybe)
-	return 0;
+	goto fail_close;
       die("Cannot read %s: %m", path);
     }
   if (n >= CG_BUFSIZE - 1)
@@ -712,8 +713,11 @@ cg_read(cg_controller controller, const char *attr, char *buf)
   if (verbose > 1)
     msg("CG: Read %s = %s\n", attr, buf);
 
+  result = 1;
+fail_close:
   close(fd);
-  return 1;
+fail:
+  return result;
 }
 
 static void __attribute__((format(printf,3,4)))
@@ -744,7 +748,7 @@ cg_write(cg_controller controller, const char *attr, const char *fmt, ...)
   if (fd < 0)
     {
       if (maybe)
-	return;
+	goto fail;
       else
 	die("Cannot write %s: %m", path);
     }
@@ -753,14 +757,16 @@ cg_write(cg_controller controller, const char *attr, const char *fmt, ...)
   if (written < 0)
     {
       if (maybe)
-	return;
+	goto fail_close;
       else
 	die("Cannot set %s to %s: %m", path, buf);
     }
   if (written != n)
     die("Short write to %s (%d out of %d bytes)", path, written, n);
 
+fail_close:
   close(fd);
+fail:
   va_end(args);
 }
 
