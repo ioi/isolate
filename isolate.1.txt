@@ -108,6 +108,13 @@ OPTIONS
 	unless you enable the control group mode. If 'max' is not given, an arbitrary
 	number of processes can be run. By default, only one process is permitted.
 
+*--share-net*::
+	By default, isolate creates a new network namespace for its child process.
+	This namespace contains no network devices except for a per-namespace loopback.
+	This prevents the program from communicating with the outside world. If you want
+	to permit communication, you can use this switch to keep the child process
+	in parent's network namespace.
+
 *-v, --verbose*::
 	Tell the sandbox manager to be verbose and report on what is going on.
 	Using *-v* multiple times produces even more jabber.

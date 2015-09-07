@@ -61,6 +61,7 @@ static int inode_quota;
 static int max_processes = 1;
 static char *redir_stdin, *redir_stdout, *redir_stderr;
 static char *set_cwd;
+static int share_net;
 
 static int cg_enable;
 static int cg_memory_limit;
@@ -1365,7 +1366,7 @@ run(char **argv)
   box_pid = clone(
     box_inside,			// Function to execute as the body of the new process
     argv,			// Pass our stack
-    SIGCHLD | CLONE_NEWIPC | CLONE_NEWNET | CLONE_NEWNS | CLONE_NEWPID,
+    SIGCHLD | CLONE_NEWIPC | (share_net ? 0 : CLONE_NEWNET) | CLONE_NEWNS | CLONE_NEWPID,
     argv);			// Pass the arguments
   if (box_pid < 0)
     die("clone: %m");
@@ -1428,6 +1429,7 @@ Options:\n\
 -m, --mem=<size>\tLimit address space to <size> KB\n\
 -M, --meta=<file>\tOutput process information to <file> (name:value)\n\
 -q, --quota=<blk>,<ino>\tSet disk quota to <blk> blocks and <ino> inodes\n\
+    --share-net\t\tShare network namespace with the parent process\n\
 -k, --stack=<size>\tLimit stack size to <size> KB (default: 0=unlimited)\n\
 -r, --stderr=<file>\tRedirect stderr to <file>\n\
 -i, --stdin=<file>\tRedirect stdin from <file>\n\
@@ -1454,6 +1456,7 @@ enum opt_code {
   OPT_CG,
   OPT_CG_MEM,
   OPT_CG_TIMING,
+  OPT_SHARE_NET,
 };
 
 static const char short_opts[] = "b:c:d:eE:i:k:m:M:o:p::q:r:t:vw:x:";
@@ -1476,6 +1479,7 @@ static const struct option long_opts[] = {
   { "processes",	2, NULL, 'p' },
   { "quota",		1, NULL, 'q' },
   { "run",		0, NULL, OPT_RUN },
+  { "share-net",	0, NULL, OPT_SHARE_NET },
   { "stack",		1, NULL, 'k' },
   { "stderr",		1, NULL, 'r' },
   { "stdin",		1, NULL, 'i' },
@@ -1579,6 +1583,9 @@ main(int argc, char **argv)
 	break;
       case OPT_CG_TIMING:
 	cg_timing = 1;
+	break;
+      case OPT_SHARE_NET:
+	share_net = 1;
 	break;
       default:
 	usage(NULL);
