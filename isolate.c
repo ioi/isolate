@@ -573,7 +573,7 @@ static void make_dir(char *path)
       if (sep)
 	*sep = 0;
 
-      if (!dir_exists(path) && mkdir(path, 0777) < 0)
+      if (mkdir(path, 0777) < 0 && (errno != EEXIST || !dir_exists(path)))
 	die("Cannot create directory %s: %m\n", path);
 
       if (!sep)
