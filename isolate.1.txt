@@ -263,7 +263,7 @@ command-line, which can be set using GRUB_CMDLINE_LINUX_DEFAULT in
 Isolate is designed to run setuid to root. The sub-process inside the sandbox
 then switches to a non-privileged user ID (different for each *--box-id*).
 The range of UIDs available and several filesystem paths are embedded in the
-isolate's binary during compilation; please see +default.cfg+ in the source
+isolate's binary during compilation; please see +config.h+ in the source
 tree for description.
 
 Before you run isolate with control groups, you need to ensure that the cgroup
