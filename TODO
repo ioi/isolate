@@ -3,8 +3,6 @@ Test: ptrace self
 Test: SIGSTOP
 Test: ping-pong timing attacks
 Test: big static memory
-Doc: avoid AS randomization
-Doc: avoid cpufreq
 Examine the use of taskstats for measuring memory
 Doc: mount -t cgroup none -o cpuset,cpuacct,memory /sys/fs/cgroup
 Switch license to GPL2/GPL3
