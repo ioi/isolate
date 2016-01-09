@@ -9,7 +9,7 @@ CFLAGS=-std=gnu99 -Wall -Wextra -Wno-parentheses -Wno-unused-result -Wno-missing
 VERSION=1.1
 YEAR=2015
 BUILD_DATE:=$(shell date '+%Y-%m-%d')
-BUILD_COMMIT:=$(shell if [ -d .git ] ; then git describe --always ; else echo '<unknown>' ; fi)
+BUILD_COMMIT:=$(shell if git rev-parse >/dev/null 2>/dev/null ; then git describe --always ; else echo '<unknown>' ; fi)
 CFLAGS += -DVERSION='"$(VERSION)"' -DYEAR='"$(YEAR)"' -DBUILD_DATE='"$(BUILD_DATE)"' -DBUILD_COMMIT='"$(BUILD_COMMIT)"'
 
 PREFIX = $(DESTDIR)/usr/local
