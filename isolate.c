@@ -1,7 +1,7 @@
 /*
  *	A Process Isolator based on Linux Containers
  *
- *	(c) 2012-2015 Martin Mares <mj@ucw.cz>
+ *	(c) 2012-2016 Martin Mares <mj@ucw.cz>
  *	(c) 2012-2014 Bernard Blackham <bernard@blackham.com.au>
  */
 
@@ -330,7 +330,7 @@ static struct env_rule *first_env_rule;
 static struct env_rule **last_env_rule = &first_env_rule;
 
 static struct env_rule default_env_rules[] = {
-  { "LIBC_FATAL_STDERR_", "1" }
+  { .var = "LIBC_FATAL_STDERR_", .val = "1", .var_len = 18 },
 };
 
 static int
