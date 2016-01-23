@@ -88,15 +88,19 @@ OPTIONS
 
 *-i, --stdin=*'file'::
 	Redirect standard input from 'file'. The 'file' has to be accessible
-	inside the sandbox.
+	inside the sandbox. Otherwise, standard input is inherited from the
+	parent process.
 
 *-o, --stdout=*'file'::
 	Redirect standard output to 'file'. The 'file' has to be accessible
-	inside the sandbox.
+	inside the sandbox. Otherwise, standard output is inherited from the
+	parent process and the sandbox manager does not write anything to it.
 
 *-r, --stderr=*'file'::
 	Redirect standard error output to 'file'. The 'file' has to be accessible
-	inside the sandbox.
+	inside the sandbox. Otherwise, standard error output is inherited from
+	the parent process and both the sandboxed process and the sandbox manager
+	can write their status messages to it.
 
 *-c, --chdir=*'dir'::
 	Change directory to 'dir' before executing the program. This path must be
@@ -118,6 +122,11 @@ OPTIONS
 *-v, --verbose*::
 	Tell the sandbox manager to be verbose and report on what is going on.
 	Using *-v* multiple times produces even more jabber.
+
+*-s, --silent*::
+	Tell the sandbox manager to keep silence. No status messages are printed
+	to stderr except for fatal errors of the sandbox itself. The combination of
+	*--verbose* and *--silent* has an undefined effect.
 
 ENVIRONMENT RULES
 -----------------

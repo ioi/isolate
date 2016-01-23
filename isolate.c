@@ -53,6 +53,7 @@ static int wall_timeout;
 static int extra_timeout;
 static int pass_environ;
 static int verbose;
+static int silent;
 static int fsize_limit;
 static int memory_limit;
 static int stack_limit;
@@ -227,8 +228,11 @@ err(char *msg, ...)
   char buf[1024];
   vsnprintf(buf, sizeof(buf), msg, args);
   meta_printf("message:%s\n", buf);
-  fputs(buf, stderr);
-  fputc('\n', stderr);
+  if (!silent)
+    {
+      fputs(buf, stderr);
+      fputc('\n', stderr);
+    }
   box_exit(1);
 }
 
@@ -1166,9 +1170,12 @@ box_keeper(void)
 	  if (wall_timeout && wall_ms > wall_timeout)
 	    err("TO: Time limit exceeded (wall clock)");
 	  flush_line();
-	  fprintf(stderr, "OK (%d.%03d sec real, %d.%03d sec wall)\n",
-	      total_ms/1000, total_ms%1000,
-	      wall_ms/1000, wall_ms%1000);
+	  if (!silent)
+	    {
+	      fprintf(stderr, "OK (%d.%03d sec real, %d.%03d sec wall)\n",
+		total_ms/1000, total_ms%1000,
+		wall_ms/1000, wall_ms%1000);
+	    }
 	  box_exit(0);
 	}
       else if (WIFSIGNALED(stat))
@@ -1430,6 +1437,7 @@ Options:\n\
 -M, --meta=<file>\tOutput process information to <file> (name:value)\n\
 -q, --quota=<blk>,<ino>\tSet disk quota to <blk> blocks and <ino> inodes\n\
     --share-net\t\tShare network namespace with the parent process\n\
+-s, --silent\t\tDo not print status messages except for fatal errors\n\
 -k, --stack=<size>\tLimit stack size to <size> KB (default: 0=unlimited)\n\
 -r, --stderr=<file>\tRedirect stderr to <file>\n\
 -i, --stdin=<file>\tRedirect stdin from <file>\n\
@@ -1459,7 +1467,7 @@ enum opt_code {
   OPT_SHARE_NET,
 };
 
-static const char short_opts[] = "b:c:d:eE:i:k:m:M:o:p::q:r:t:vw:x:";
+static const char short_opts[] = "b:c:d:eE:i:k:m:M:o:p::q:r:st:vw:x:";
 
 static const struct option long_opts[] = {
   { "box-id",		1, NULL, 'b' },
@@ -1480,6 +1488,7 @@ static const struct option long_opts[] = {
   { "quota",		1, NULL, 'q' },
   { "run",		0, NULL, OPT_RUN },
   { "share-net",	0, NULL, OPT_SHARE_NET },
+  { "silent",		0, NULL, 's' },
   { "stack",		1, NULL, 'k' },
   { "stderr",		1, NULL, 'r' },
   { "stdin",		1, NULL, 'i' },
@@ -1556,6 +1565,9 @@ main(int argc, char **argv)
 	break;
       case 'r':
 	redir_stderr = optarg;
+	break;
+      case 's':
+	silent++;
 	break;
       case 't':
 	timeout = 1000*atof(optarg);
