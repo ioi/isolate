@@ -83,7 +83,7 @@ static int cleanup_ownership;
 static struct timeval start_time;
 static int ticks_per_sec;
 static int total_ms, wall_ms;
-static volatile sig_atomic_t timer_tick;
+static volatile sig_atomic_t timer_tick, interrupt;
 
 static int error_pipes[2];
 static int write_errors_to_fd;
@@ -196,6 +196,13 @@ die(char *msg, ...)
   va_start(args, msg);
   char buf[1024];
   int n = vsnprintf(buf, sizeof(buf), msg, args);
+
+  // If the child process is still running, show no mercy.
+  if (box_pid > 0)
+    {
+      kill(-box_pid, SIGKILL);
+      kill(box_pid, SIGKILL);
+    }
 
   if (write_errors_to_fd)
     {
@@ -990,7 +997,34 @@ set_quota(void)
   free(dev);
 }
 
-/*** The keeper process ***/
+/*** Signal handling in keeper process ***/
+
+/*
+ *   Signal handling is tricky. We must set up signal handlers before
+ *   we start the child process (and reset them in the child process).
+ *   Otherwise, there is a short time window where a SIGINT can kill
+ *   us and leave the child process running.
+ */
+
+struct signal_rule {
+  int signum;
+  enum { SIGNAL_IGNORE, SIGNAL_INTERRUPT, SIGNAL_FATAL } action;
+};
+
+static const struct signal_rule signal_rules[] = {
+  { SIGHUP,	SIGNAL_INTERRUPT },
+  { SIGINT,	SIGNAL_INTERRUPT },
+  { SIGQUIT,	SIGNAL_INTERRUPT },
+  { SIGILL,	SIGNAL_FATAL },
+  { SIGABRT,	SIGNAL_FATAL },
+  { SIGFPE,	SIGNAL_FATAL },
+  { SIGSEGV,	SIGNAL_FATAL },
+  { SIGPIPE,	SIGNAL_IGNORE },
+  { SIGTERM,	SIGNAL_INTERRUPT },
+  { SIGUSR1,	SIGNAL_IGNORE },
+  { SIGUSR2,	SIGNAL_IGNORE },
+  { SIGBUS,	SIGNAL_FATAL },
+};
 
 static void
 signal_alarm(int unused UNUSED)
@@ -1003,10 +1037,54 @@ signal_alarm(int unused UNUSED)
 static void
 signal_int(int signum)
 {
-  /* Interrupts are fatal, so no synchronization requirements. */
-  meta_printf("exitsig:%d\n", signum);
-  err("SG: Interrupted");
+  /* Interrupts (e.g., SIGINT) are synchronous, too. */
+  interrupt = signum;
 }
+
+static void
+signal_fatal(int signum)
+{
+  /* If we receive SIGSEGV or a similar signal, we try to die gracefully. */
+  die("Sandbox keeper received fatal signal %d", signum);
+}
+
+static void
+setup_signals(void)
+{
+  struct sigaction sa_int, sa_fatal;
+  bzero(&sa_int, sizeof(sa_int));
+  sa_int.sa_handler = signal_int;
+  bzero(&sa_fatal, sizeof(sa_fatal));
+  sa_fatal.sa_handler = signal_fatal;
+
+  for (int i=0; i < ARRAY_SIZE(signal_rules); i++)
+    {
+      const struct signal_rule *sr = &signal_rules[i];
+      switch (sr->action)
+	{
+	case SIGNAL_IGNORE:
+	  signal(sr->signum, SIG_IGN);
+	  break;
+	case SIGNAL_INTERRUPT:
+	  sigaction(sr->signum, &sa_int, NULL);
+	  break;
+	case SIGNAL_FATAL:
+	  sigaction(sr->signum, &sa_fatal, NULL);
+	  break;
+	default:
+	  die("Invalid signal rule");
+	}
+    }
+}
+
+static void
+reset_signals(void)
+{
+  for (int i=0; i < ARRAY_SIZE(signal_rules); i++)
+    signal(signal_rules[i].signum, SIG_DFL);
+}
+
+/*** The keeper process ***/
 
 #define PROC_BUF_SIZE 4096
 static void
@@ -1100,21 +1178,6 @@ box_keeper(void)
   read_errors_from_fd = error_pipes[0];
   close(error_pipes[1]);
 
-  struct sigaction sa;
-  bzero(&sa, sizeof(sa));
-  sa.sa_handler = signal_int;
-  sigaction(SIGHUP, &sa, NULL);
-  sigaction(SIGINT, &sa, NULL);
-  sigaction(SIGQUIT, &sa, NULL);
-  sigaction(SIGILL, &sa, NULL);
-  sigaction(SIGABRT, &sa, NULL);
-  sigaction(SIGFPE, &sa, NULL);
-  sigaction(SIGSEGV, &sa, NULL);
-  sigaction(SIGPIPE, &sa, NULL);
-  sigaction(SIGTERM, &sa, NULL);
-  sigaction(SIGUSR1, &sa, NULL);
-  sigaction(SIGUSR2, &sa, NULL);
-
   gettimeofday(&start_time, NULL);
   ticks_per_sec = sysconf(_SC_CLK_TCK);
   if (ticks_per_sec <= 0)
@@ -1122,6 +1185,8 @@ box_keeper(void)
 
   if (timeout || wall_timeout)
     {
+      struct sigaction sa;
+      bzero(&sa, sizeof(sa));
       sa.sa_handler = signal_alarm;
       sigaction(SIGALRM, &sa, NULL);
       alarm(1);
@@ -1132,6 +1197,11 @@ box_keeper(void)
       struct rusage rus;
       int stat;
       pid_t p;
+      if (interrupt)
+	{
+	  meta_printf("exitsig:%d\n", interrupt);
+	  err("SG: Interrupted");
+	}
       if (timer_tick)
 	{
 	  check_timeout();
@@ -1297,6 +1367,7 @@ box_inside(void *arg)
   close(error_pipes[0]);
   meta_close();
 
+  reset_signals();
   cg_enter();
   setup_root();
   setup_credentials();
@@ -1369,6 +1440,8 @@ run(char **argv)
     if (fcntl(error_pipes[i], F_SETFD, fcntl(error_pipes[i], F_GETFD) | FD_CLOEXEC) < 0 ||
         fcntl(error_pipes[i], F_SETFL, fcntl(error_pipes[i], F_GETFL) | O_NONBLOCK) < 0)
       die("fcntl on pipe: %m");
+
+  setup_signals();
 
   box_pid = clone(
     box_inside,			// Function to execute as the body of the new process
