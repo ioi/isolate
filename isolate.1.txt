@@ -266,14 +266,13 @@ you should also enable the swap controller (+CONFIG_MEMCG_SWAP+).
 
 Debian 7.x and newer require enabling the memory and swap cgroup controllers by
 adding the parameters "cgroup_enable=memory swapaccount=1" to the kernel
-command-line, which can be set using GRUB_CMDLINE_LINUX_DEFAULT in
+command-line, which can be set using +GRUB_CMDLINE_LINUX_DEFAULT+ in
 /etc/default/grub.
 
 Isolate is designed to run setuid to root. The sub-process inside the sandbox
 then switches to a non-privileged user ID (different for each *--box-id*).
-The range of UIDs available and several filesystem paths are embedded in the
-isolate's binary during compilation; please see +config.h+ in the source
-tree for description.
+The range of UIDs available and several filesystem paths are set in a configuration
+file, by default located in /usr/local/etc/isolate.
 
 Before you run isolate with control groups, you need to ensure that the cgroup
 filesystem is enabled and mounted.  Most modern Linux distributions already
@@ -298,4 +297,4 @@ LICENSE
 -------
 Isolate was written by Martin Mares and Bernard Blackham.
 It can be distributed and used under the terms of the GNU
-General Public License version 2.
+General Public License version 2 or any later version.
