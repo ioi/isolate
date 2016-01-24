@@ -2,7 +2,7 @@
 #define __ISOLATE_CONFIG_H__
 
 /* A directory under which all sandboxes are created. */
-#define CONFIG_ISOLATE_BOX_DIR "/tmp/box"
+#define CONFIG_ISOLATE_BOX_DIR "/var/local/lib/isolate"
 
 /* Range of UIDs and GIDs reserved for use by the sandboxes. */
 #define CONFIG_ISOLATE_FIRST_UID 60000

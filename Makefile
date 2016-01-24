@@ -13,11 +13,13 @@ BUILD_COMMIT:=$(shell if git rev-parse >/dev/null 2>/dev/null ; then git describ
 CFLAGS += -DVERSION='"$(VERSION)"' -DYEAR='"$(YEAR)"' -DBUILD_DATE='"$(BUILD_DATE)"' -DBUILD_COMMIT='"$(BUILD_COMMIT)"'
 
 PREFIX = $(DESTDIR)/usr/local
+VARPREFIX = $(DESTDIR)/var/local
 BINDIR = $(PREFIX)/bin
 DATAROOTDIR = $(PREFIX)/share
 DATADIR = $(DATAROOTDIR)
 MANDIR = $(DATADIR)/man
 MAN1DIR = $(MANDIR)/man1
+BOXDIR = $(VARPREFIX)/lib/isolate
 
 isolate: isolate.c config.h
 	$(CC) $(CFLAGS) -o $@ $^
@@ -37,6 +39,7 @@ clean:
 install: isolate
 	install -D $< $(BINDIR)/$<
 	chmod u+s $(BINDIR)/$<
+	install -d $(BOXDIR)
 
 install-doc: isolate.1
 	install -D $< $(MAN1DIR)/$<
