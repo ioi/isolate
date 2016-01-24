@@ -285,7 +285,16 @@ xstrdup(char *str)
 static int dir_exists(char *path)
 {
   struct stat st;
-  return (stat(path, &st) >= 0 && S_ISDIR(st.st_mode));
+  if (stat(path, &st) < 0)
+    return 0;
+  if (!S_ISDIR(st.st_mode))
+    {
+      // Set errno explicitly if the stat succeeded but path is not a
+      // directory, so printed errors make sense.
+      errno = ENOTDIR;
+      return 0;
+    }
+  return 1;
 }
 
 static int rmtree_helper(const char *fpath, const struct stat *sb,
@@ -580,19 +589,24 @@ static void make_dir(char *path)
 {
   char *sep = (path[0] == '/' ? path+1 : path);
 
+  // Create one path component at a time
   for (;;)
     {
       sep = strchr(sep, '/');
       if (sep)
 	*sep = 0;
 
-      if (!dir_exists(path) && mkdir(path, 0777) < 0)
+      if (mkdir(path, 0777) < 0 && errno != EEXIST)
 	die("Cannot create directory %s: %m\n", path);
 
       if (!sep)
-	return;
+	break;
       *sep++ = '/';
     }
+  // mkdir() above may have returned EEXIST even if the path was not a
+  // directory. Ensure that it is.
+  if (!dir_exists(path))
+    die("Cannot create directory %s: %m\n", path);
 }
 
 static void apply_dir_rules(void)
