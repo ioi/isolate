@@ -25,7 +25,7 @@ isolate: isolate.c config.h
 	$(CC) $(CFLAGS) -o $@ $^
 
 isolate.1: isolate.1.txt
-	a2x -f manpage -D . $<
+	a2x -f manpage $<
 
 # The dependency on isolate.1 is there to serialize both calls of asciidoc,
 # which does not name temporary files safely.
