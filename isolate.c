@@ -586,13 +586,21 @@ static void make_dir(char *path)
       if (sep)
 	*sep = 0;
 
-      if (!dir_exists(path) && mkdir(path, 0777) < 0)
-	die("Cannot create directory %s: %m\n", path);
+      if (mkdir(path, 0777) < 0 && errno != EEXIST)
+	die("Cannot create directory %s: %m", path);
 
       if (!sep)
-	return;
+	break;
       *sep++ = '/';
     }
+
+ // mkdir() above may have returned EEXIST even if the path was not
+ // a directory. Ensure that it is.
+  struct stat st;
+  if (stat(path, &st) < 0)
+    die("Cannot stat %s: %m", path);
+  if (!S_ISDIR(st.st_mode))
+    die("Cannot create %s: already exists, but not a directory", path);
 }
 
 static void apply_dir_rules(void)
