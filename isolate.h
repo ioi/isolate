@@ -9,8 +9,6 @@
 #include <stdint.h>
 #include <sys/types.h>
 
-#include "config.h"
-
 #define NONRET __attribute__((noreturn))
 #define UNUSED __attribute__((unused))
 #define ARRAY_SIZE(a) (int)(sizeof(a)/sizeof(a[0]))
@@ -65,3 +63,13 @@ void cg_enter(void);
 int cg_get_run_time_ms(void);
 void cg_stats(void);
 void cg_remove(void);
+
+/* config.c */
+
+extern char *cf_box_root;
+extern char *cf_cg_root;
+extern int cf_first_uid;
+extern int cf_first_gid;
+extern int cf_num_boxes;
+
+void cf_parse(void);

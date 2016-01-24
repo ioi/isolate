@@ -597,12 +597,12 @@ box_inside(void *arg)
 static void
 box_init(void)
 {
-  if (box_id < 0 || box_id >= CONFIG_ISOLATE_NUM_BOXES)
-    die("Sandbox ID out of range (allowed: 0-%d)", CONFIG_ISOLATE_NUM_BOXES-1);
-  box_uid = CONFIG_ISOLATE_FIRST_UID + box_id;
-  box_gid = CONFIG_ISOLATE_FIRST_GID + box_id;
+  if (box_id < 0 || box_id >= cf_num_boxes)
+    die("Sandbox ID out of range (allowed: 0-%d)", cf_num_boxes-1);
+  box_uid = cf_first_uid + box_id;
+  box_gid = cf_first_gid + box_id;
 
-  snprintf(box_dir, sizeof(box_dir), "%s/%d", CONFIG_ISOLATE_BOX_DIR, box_id);
+  snprintf(box_dir, sizeof(box_dir), "%s/%d", cf_box_root, box_id);
   make_dir(box_dir);
   if (chdir(box_dir) < 0)
     die("chdir(%s): %m", box_dir);
@@ -673,13 +673,6 @@ show_version(void)
   printf("The process isolator " VERSION "\n");
   printf("(c) 2012--" YEAR " Martin Mares and Bernard Blackham\n");
   printf("Built on " BUILD_DATE " from Git commit " BUILD_COMMIT "\n");
-  printf("\nCompile-time configuration:\n");
-  printf("Sandbox directory: %s\n", CONFIG_ISOLATE_BOX_DIR);
-  printf("Sandbox credentials: uid=%u-%u gid=%u-%u\n",
-    CONFIG_ISOLATE_FIRST_UID,
-    CONFIG_ISOLATE_FIRST_UID + CONFIG_ISOLATE_NUM_BOXES - 1,
-    CONFIG_ISOLATE_FIRST_GID,
-    CONFIG_ISOLATE_FIRST_GID + CONFIG_ISOLATE_NUM_BOXES - 1);
 }
 
 /*** Options ***/
@@ -902,6 +895,7 @@ main(int argc, char **argv)
   orig_gid = getgid();
 
   umask(022);
+  cf_parse();
   box_init();
   cg_init();
 

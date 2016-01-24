@@ -54,8 +54,7 @@ static char cg_name[256];
 static void
 cg_makepath(char *buf, size_t len, cg_controller c, const char *attr)
 {
-  const char *cg_root = CONFIG_ISOLATE_CGROUP_ROOT;
-  snprintf(buf, len, "%s/%s/%s/%s", cg_root, cg_controller_name(c), cg_name, attr);
+  snprintf(buf, len, "%s/%s/%s/%s", cf_cg_root, cg_controller_name(c), cg_name, attr);
 }
 
 static int
@@ -159,9 +158,8 @@ cg_init(void)
   if (!cg_enable)
     return;
 
-  char *cg_root = CONFIG_ISOLATE_CGROUP_ROOT;
-  if (!dir_exists(cg_root))
-    die("Control group filesystem at %s not mounted", cg_root);
+  if (!dir_exists(cf_cg_root))
+    die("Control group filesystem at %s not mounted", cf_cg_root);
 
   snprintf(cg_name, sizeof(cg_name), "box-%d", box_id);
   msg("Using control group %s\n", cg_name);

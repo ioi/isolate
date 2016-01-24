@@ -13,6 +13,8 @@ BUILD_COMMIT:=$(shell if git rev-parse >/dev/null 2>/dev/null ; then git describ
 
 PREFIX = $(DESTDIR)/usr/local
 VARPREFIX = $(DESTDIR)/var/local
+CONFIGDIR = $(PREFIX)/etc
+CONFIG = $(CONFIGDIR)/isolate
 BINDIR = $(PREFIX)/bin
 DATAROOTDIR = $(PREFIX)/share
 DATADIR = $(DATAROOTDIR)
@@ -20,13 +22,14 @@ MANDIR = $(DATADIR)/man
 MAN1DIR = $(MANDIR)/man1
 BOXDIR = $(VARPREFIX)/lib/isolate
 
-isolate: isolate.o util.o rules.o cg.o
+isolate: isolate.o util.o rules.o cg.o config.o
 	$(CC) $(LDFLAGS) -o $@ $^
 
 %.o: %.c isolate.h config.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 isolate.o: CFLAGS += -DVERSION='"$(VERSION)"' -DYEAR='"$(YEAR)"' -DBUILD_DATE='"$(BUILD_DATE)"' -DBUILD_COMMIT='"$(BUILD_COMMIT)"'
+config.o: CFLAGS += -DCONFIG_FILE='"$(CONFIG)"'
 
 isolate.1: isolate.1.txt
 	a2x -f manpage $<
@@ -45,6 +48,7 @@ install: isolate
 	install -D $< $(BINDIR)/$<
 	chmod u+s $(BINDIR)/$<
 	install -d $(BOXDIR)
+	install -D default.cf $(CONFIG)
 
 install-doc: isolate.1
 	install -D $< $(MAN1DIR)/$<
