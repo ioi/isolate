@@ -192,7 +192,7 @@ CONTROL GROUPS
 --------------
 Isolate can make use of system control groups provided by the kernel
 to constrain programs consisting of multiple processes. Please note
-that this feature needs special system setup described in the REQUIREMENTS
+that this feature needs special system setup described in the INSTALLATION
 section.
 
 *--cg*::
