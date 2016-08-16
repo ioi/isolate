@@ -196,11 +196,14 @@ cg_prepare(void)
 	die("Failed to create control group %s: %m", path);
     }
 
-  // If cpuset module is enabled, copy allowed cpus and memory nodes from parent group
+  // If the cpuset module is enabled, set up allowed cpus and memory nodes.
+  // If per-box configuration exists, use it; otherwise, inherit the settings
+  // from the parent cgroup.
+  struct cf_per_box *cf = cf_current_box();
   if (cg_read(CG_PARENT | CG_CPUSET, "?cpuset.cpus", buf))
-    cg_write(CG_CPUSET, "cpuset.cpus", "%s", buf);
+    cg_write(CG_CPUSET, "cpuset.cpus", "%s", cf->cpus ? cf->cpus : buf);
   if (cg_read(CG_PARENT | CG_CPUSET, "?cpuset.mems", buf))
-    cg_write(CG_CPUSET, "cpuset.mems", "%s", buf);
+    cg_write(CG_CPUSET, "cpuset.mems", "%s", cf->mems ? cf->mems : buf);
 }
 
 void

@@ -72,4 +72,13 @@ extern int cf_first_uid;
 extern int cf_first_gid;
 extern int cf_num_boxes;
 
+struct cf_per_box {
+  struct cf_per_box *next;
+  int box_id;
+  char *cpus;
+  char *mems;
+};
+
 void cf_parse(void);
+struct cf_per_box *cf_per_box(int box_id);
+struct cf_per_box *cf_current_box(void);
