@@ -4,7 +4,7 @@
 all: isolate isolate.1 isolate.1.html
 
 CC=gcc
-CFLAGS=-std=gnu99 -Wall -Wextra -Wno-parentheses -Wno-unused-result -Wno-missing-field-initializers -D_GNU_SOURCE
+CFLAGS=-std=gnu99 -Wall -Wextra -Wno-parentheses -Wno-unused-result -Wno-missing-field-initializers -Wstrict-prototypes -Wmissing-prototypes -D_GNU_SOURCE
 
 VERSION=1.2
 YEAR=2016
