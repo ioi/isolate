@@ -15,6 +15,7 @@
 
 char *cf_box_root;
 char *cf_cg_root;
+char *cf_cg_parent;
 int cf_first_uid;
 int cf_first_gid;
 int cf_num_boxes;
@@ -54,6 +55,8 @@ cf_entry_toplevel(char *key, char *val)
     cf_box_root = cf_string(val);
   else if (!strcmp(key, "cg_root"))
     cf_cg_root = cf_string(val);
+  else if (!strcmp(key, "cg_parent"))
+    cf_cg_parent = cf_string(val);
   else if (!strcmp(key, "first_uid"))
     cf_first_uid = cf_int(val);
   else if (!strcmp(key, "first_gid"))

@@ -12,6 +12,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -52,16 +53,18 @@ static int cg_controller_optional(cg_controller c)
 }
 
 static char cg_name[256];
+static char cg_parent_name[256];
 
 #define CG_BUFSIZE 1024
 
 static void
 cg_makepath(char *buf, size_t len, cg_controller c, const char *attr)
 {
-  if (c & CG_PARENT)
-    snprintf(buf, len, "%s/%s/%s", cf_cg_root, cg_controller_name(c & ~CG_PARENT), attr);
-  else
-    snprintf(buf, len, "%s/%s/%s/%s", cf_cg_root, cg_controller_name(c), cg_name, attr);
+  snprintf(buf, len, "%s/%s/%s/%s",
+    cf_cg_root,
+    cg_controller_name(c & ~CG_PARENT),
+    (c & CG_PARENT) ? cg_parent_name : cg_name,
+    attr);
 }
 
 static int
@@ -168,8 +171,17 @@ cg_init(void)
   if (!dir_exists(cf_cg_root))
     die("Control group filesystem at %s not mounted", cf_cg_root);
 
-  snprintf(cg_name, sizeof(cg_name), "box-%d", box_id);
-  msg("Using control group %s\n", cg_name);
+  if (cf_cg_parent)
+    {
+      snprintf(cg_name, sizeof(cg_name), "%s/box-%d", cf_cg_parent, box_id);
+      snprintf(cg_parent_name, sizeof(cg_parent_name), "%s", cf_cg_parent);
+    }
+  else
+    {
+      snprintf(cg_name, sizeof(cg_name), "box-%d", box_id);
+      strcpy(cg_parent_name, ".");
+    }
+  msg("Using control group %s under parent %s\n", cg_name, cg_parent_name);
 }
 
 void

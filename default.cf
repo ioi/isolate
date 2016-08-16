@@ -8,6 +8,10 @@ box_root = /var/local/lib/isolate
 # Root of the control group hierarchy
 cg_root = /sys/fs/cgroup
 
+# If the following variable is defined, the per-box cgroups
+# are created as sub-groups of the named cgroup
+#cg_parent = boxes
+
 # Block of UIDs and GIDs reserved for sandboxes
 first_uid = 60000
 first_gid = 60000
