@@ -745,7 +745,7 @@ enum opt_code {
   OPT_SHARE_NET,
 };
 
-static const char short_opts[] = "b:c:d:eE:i:k:m:M:o:p::q:r:st:vw:x:";
+static const char short_opts[] = "b:c:d:eE:f:i:k:m:M:o:p::q:r:st:vw:x:";
 
 static const struct option long_opts[] = {
   { "box-id",		1, NULL, 'b' },
