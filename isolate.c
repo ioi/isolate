@@ -803,9 +803,6 @@ main(int argc, char **argv)
 	if (!set_dir_action(optarg))
 	  usage("Invalid directory specified: %s\n", optarg);
 	break;
-      case 'f':
-        fsize_limit = atoi(optarg);
-        break;
       case 'e':
 	pass_environ = 1;
 	break;
@@ -813,6 +810,9 @@ main(int argc, char **argv)
 	if (!set_env_action(optarg))
 	  usage("Invalid environment specified: %s\n", optarg);
 	break;
+      case 'f':
+        fsize_limit = atoi(optarg);
+        break;
       case 'k':
 	stack_limit = atoi(optarg);
 	break;
