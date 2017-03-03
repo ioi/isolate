@@ -48,9 +48,9 @@ install: isolate
 	install -D $< $(BINDIR)/$<
 	chmod u+s $(BINDIR)/$<
 	install -d $(BOXDIR)
-	install -D default.cf $(CONFIG)
+	install -m 644 -D default.cf $(CONFIG)
 
 install-doc: isolate.1
-	install -D $< $(MAN1DIR)/$<
+	install -m 644 -D $< $(MAN1DIR)/$<
 
 .PHONY: all clean install install-doc
