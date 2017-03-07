@@ -614,9 +614,13 @@ static void
 init(void)
 {
   msg("Preparing sandbox directory\n");
-  rmtree("box");
   if (mkdir("box", 0700) < 0)
-    die("Cannot create box: %m");
+    {
+      if (errno == EEXIST)
+        die("Box already exists, run --cleanup first");
+      else
+        die("Cannot create box: %m");
+    }
   if (chown("box", orig_uid, orig_gid) < 0)
     die("Cannot chown box: %m");
 
