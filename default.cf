@@ -3,7 +3,7 @@
 # All sandboxes are created under this directory.
 # To avoid symlink attacks, this directory and all its ancestors
 # must be writeable only to root.
-box_root = /var/local/lib/isolate
+box_root = /tmp/box
 
 # Root of the control group hierarchy
 cg_root = /sys/fs/cgroup
