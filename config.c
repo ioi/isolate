@@ -154,6 +154,7 @@ cf_per_box(int box_id)
       return c;
 
   c = xmalloc(sizeof(*c));
+  memset(c, 0, sizeof(*c));
   c->next = per_box_configs;
   per_box_configs = c;
   c->box_id = box_id;
