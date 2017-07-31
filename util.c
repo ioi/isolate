@@ -1,12 +1,13 @@
 /*
  *	Process Isolator -- Utility Functions
  *
- *	(c) 2012-2016 Martin Mares <mj@ucw.cz>
+ *	(c) 2012-2017 Martin Mares <mj@ucw.cz>
  *	(c) 2012-2014 Bernard Blackham <bernard@blackham.com.au>
  */
 
 #include "isolate.h"
 
+#include <dirent.h>
 #include <errno.h>
 #include <ftw.h>
 #include <stdio.h>
@@ -109,6 +110,31 @@ chowntree(char *path, uid_t uid, gid_t gid)
   chown_uid = uid;
   chown_gid = gid;
   nftw(path, chowntree_helper, 32, FTW_MOUNT | FTW_PHYS);
+}
+
+void
+close_all_fds(void)
+{
+  /* Close all file descriptors except 0, 1, 2 */
+
+  DIR *dir = opendir("/proc/self/fd");
+  if (!dir)
+    die("Cannot open /proc/self/fd: %m");
+  int dir_fd = dirfd(dir);
+
+  struct dirent *e;
+  while (e = readdir(dir))
+    {
+      char *end;
+      long int fd = strtol(e->d_name, &end, 10);
+      if (*end)
+	continue;
+      if (fd >= 0 && fd <= 2 || fd == dir_fd)
+	continue;
+      close(fd);
+    }
+
+  closedir(dir);
 }
 
 /*** Meta-files ***/

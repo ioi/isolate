@@ -1,7 +1,7 @@
 /*
  *	A Process Isolator based on Linux Containers
  *
- *	(c) 2012-2016 Martin Mares <mj@ucw.cz>
+ *	(c) 2012-2017 Martin Mares <mj@ucw.cz>
  *	(c) 2012-2014 Bernard Blackham <bernard@blackham.com.au>
  */
 
@@ -52,6 +52,7 @@ static int max_processes = 1;
 static char *redir_stdin, *redir_stdout, *redir_stderr;
 static char *set_cwd;
 static int share_net;
+static int inherit_fds;
 
 int cg_enable;
 int cg_memory_limit;
@@ -653,6 +654,9 @@ run(char **argv)
   if (!dir_exists("box"))
     die("Box directory not found, did you run `%s --init'?", self_name());
 
+  if (!inherit_fds)
+    close_all_fds();
+
   chowntree("box", box_uid, box_gid);
   cleanup_ownership = 1;
 
@@ -721,6 +725,7 @@ Options:\n\
 -x, --extra-time=<time>\tSet extra timeout, before which a timing-out program is not yet killed,\n\
 \t\t\tso that its real execution time is reported (seconds, fractions allowed)\n\
 -e, --full-env\t\tInherit full environment of the parent process\n\
+    --inherit-fds\t\tInherit all file descriptors of the parent process\n\
 -m, --mem=<size>\tLimit address space to <size> KB\n\
 -M, --meta=<file>\tOutput process information to <file> (name:value)\n\
 -q, --quota=<blk>,<ino>\tSet disk quota to <blk> blocks and <ino> inodes\n\
@@ -753,6 +758,7 @@ enum opt_code {
   OPT_CG_MEM,
   OPT_CG_TIMING,
   OPT_SHARE_NET,
+  OPT_INHERIT_FDS,
 };
 
 static const char short_opts[] = "b:c:d:eE:f:i:k:m:M:o:p::q:r:st:vw:x:";
@@ -769,6 +775,7 @@ static const struct option long_opts[] = {
   { "env",		1, NULL, 'E' },
   { "extra-time",	1, NULL, 'x' },
   { "full-env",		0, NULL, 'e' },
+  { "inherit-fds",	0, NULL, OPT_INHERIT_FDS },
   { "init",		0, NULL, OPT_INIT },
   { "mem",		1, NULL, 'm' },
   { "meta",		1, NULL, 'M' },
@@ -886,6 +893,9 @@ main(int argc, char **argv)
 	break;
       case OPT_SHARE_NET:
 	share_net = 1;
+	break;
+      case OPT_INHERIT_FDS:
+	inherit_fds = 1;
 	break;
       default:
 	usage(NULL);

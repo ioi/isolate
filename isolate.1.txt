@@ -121,6 +121,14 @@ OPTIONS
 	to permit communication, you can use this switch to keep the child process
 	in parent's network namespace.
 
+*--inherit-fds*::
+	By default, isolate closes all file descriptors passed from its parent.
+	This prevents unintentional descriptor leaks. In some cases, passing extra
+	descriptors to the sandbox can be desirable, so you can use this switch
+	to make them survive. However, descriptors 0, 1, and 2 are always handled
+	specially and redirected either to the file specified by *--stdin* and friends,
+	or to /dev/null.
+
 *-v, --verbose*::
 	Tell the sandbox manager to be verbose and report on what is going on.
 	Using *-v* multiple times produces even more jabber.
