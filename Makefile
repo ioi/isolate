@@ -11,16 +11,16 @@ YEAR=2016
 BUILD_DATE:=$(shell date '+%Y-%m-%d')
 BUILD_COMMIT:=$(shell if git rev-parse >/dev/null 2>/dev/null ; then git describe --always ; else echo '<unknown>' ; fi)
 
-PREFIX = $(DESTDIR)/usr/local
+PREFIX = .
 VARPREFIX = $(DESTDIR)/var/local
-CONFIGDIR = $(PREFIX)/etc
-CONFIG = $(CONFIGDIR)/isolate
+CONFIGDIR = $(PREFIX)
+CONFIG = $(CONFIGDIR)/isolate.conf
 BINDIR = $(PREFIX)/bin
 DATAROOTDIR = $(PREFIX)/share
 DATADIR = $(DATAROOTDIR)
 MANDIR = $(DATADIR)/man
 MAN1DIR = $(MANDIR)/man1
-BOXDIR = $(VARPREFIX)/lib/isolate
+BOXDIR = /tmp/box
 
 isolate: isolate.o util.o rules.o cg.o config.o
 	$(CC) $(LDFLAGS) -o $@ $^
