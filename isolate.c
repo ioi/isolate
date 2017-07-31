@@ -617,7 +617,7 @@ init(void)
   if (mkdir("box", 0700) < 0)
     {
       if (errno == EEXIST)
-        die("Box already exists, run --cleanup first");
+        die("Box already exists, run `isolate --cleanup' first");
       else
         die("Cannot create box: %m");
     }
