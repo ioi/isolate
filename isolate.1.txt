@@ -295,6 +295,23 @@ behavior. This setting can be made persistent through /etc/sysctl.d/.
 scaling governor to +performance+. The process for doing this varies between
 distributions.
 
+* Consider disabling Turboboost on CPUs that might support it (most i3/i5/i7
+Intel CPUs). Approach this one with caution. Disabling a CPU that Turboboosts
+from 2.3 GHz to 2.6 GHz would have minimal impact on run-times in exchange
+for determinism, but the same on a CPU that Turboboosts from 1.6 GHz to 2.8
+GHz will incur a much more dramatic slowdown. Perhaps if the ambient
+temperature is controlled and only one single-threaded task is keeping the
+CPU busy at 100%, then TB's behaviour may be reasonably deterministic;
+requires further experimentation to confirm.
+
+* Run evaluations on a single CPU (core). The Linux scheduler has a tendency to randomly
+migrate tasks between CPUs, incurring cache migration costs. You can use isolate's
+configuration file to pin the process to a specified CPU.
+
+* Disable automatic kernel support for transparent huge pages. Both /sys/kernel/mm/transparent_hugepage/enabled
+and /sys/kernel/mm/transparent_hugepage/defrag should be set to "madvise" or "never", and
+/sys/kernel/mm/transparent_hugepage/khugepaged/defrag to 0.
+
 LICENSE
 -------
 Isolate was written by Martin Mares and Bernard Blackham.
