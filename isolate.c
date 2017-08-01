@@ -610,6 +610,12 @@ box_init(void)
 
 /*** Commands ***/
 
+static const char *
+self_name(void)
+{
+  return cg_enable ? "isolate --cg" : "isolate";
+}
+
 static void
 init(void)
 {
@@ -617,7 +623,7 @@ init(void)
   if (mkdir("box", 0700) < 0)
     {
       if (errno == EEXIST)
-        die("Box already exists, run `isolate --cleanup' first");
+        die("Box already exists, run `%s --cleanup' first", self_name());
       else
         die("Cannot create box: %m");
     }
@@ -645,7 +651,7 @@ static void
 run(char **argv)
 {
   if (!dir_exists("box"))
-    die("Box directory not found, did you run `isolate --init'?");
+    die("Box directory not found, did you run `%s --init'?", self_name());
 
   chowntree("box", box_uid, box_gid);
   cleanup_ownership = 1;
