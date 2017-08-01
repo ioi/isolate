@@ -1,7 +1,7 @@
 /*
  *	Process Isolator
  *
- *	(c) 2012-2016 Martin Mares <mj@ucw.cz>
+ *	(c) 2012-2017 Martin Mares <mj@ucw.cz>
  *	(c) 2012-2014 Bernard Blackham <bernard@blackham.com.au>
  */
 
@@ -28,8 +28,8 @@ extern int cg_memory_limit;
 extern int cg_timing;
 
 extern int box_id;
-extern uid_t box_uid;
-extern gid_t box_gid;
+extern uid_t box_uid, orig_uid;
+extern gid_t box_gid, orig_gid;
 
 /* util.c */
 

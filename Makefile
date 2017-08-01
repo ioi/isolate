@@ -1,10 +1,11 @@
 # Makefile for Isolate
-# (c) 2015--2016 Martin Mares <mj@ucw.cz>
+# (c) 2015--2017 Martin Mares <mj@ucw.cz>
 
 all: isolate isolate.1 isolate.1.html
 
 CC=gcc
 CFLAGS=-std=gnu99 -Wall -Wextra -Wno-parentheses -Wno-unused-result -Wno-missing-field-initializers -Wstrict-prototypes -Wmissing-prototypes -D_GNU_SOURCE
+LIBS=-lcap
 
 VERSION=1.3
 YEAR=2016
@@ -23,7 +24,7 @@ MAN1DIR = $(MANDIR)/man1
 BOXDIR = $(VARPREFIX)/lib/isolate
 
 isolate: isolate.o util.o rules.o cg.o config.o
-	$(CC) $(LDFLAGS) -o $@ $^
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 %.o: %.c isolate.h config.h
 	$(CC) $(CFLAGS) -c -o $@ $<

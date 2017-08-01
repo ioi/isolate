@@ -63,8 +63,8 @@ static pid_t box_pid;
 
 uid_t box_uid;
 gid_t box_gid;
-static uid_t orig_uid;
-static gid_t orig_gid;
+uid_t orig_uid;
+gid_t orig_gid;
 
 static int partial_line;
 static int cleanup_ownership;
@@ -901,6 +901,8 @@ main(int argc, char **argv)
 
   if (geteuid())
     die("Must be started as root");
+  if (getegid() && setegid(0) < 0)
+    die("Cannot switch to root group: %m");
   orig_uid = getuid();
   orig_gid = getgid();
 

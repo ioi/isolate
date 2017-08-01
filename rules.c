@@ -1,7 +1,7 @@
 /*
  *	Process Isolator -- Rules
  *
- *	(c) 2012-2016 Martin Mares <mj@ucw.cz>
+ *	(c) 2012-2017 Martin Mares <mj@ucw.cz>
  *	(c) 2012-2014 Bernard Blackham <bernard@blackham.com.au>
  */
 
@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/capability.h>
 #include <sys/mount.h>
 #include <sys/quota.h>
 #include <sys/stat.h>
@@ -264,7 +265,25 @@ void init_dir_rules(void)
   set_dir_action("usr");
 }
 
-void apply_dir_rules(void)
+static void
+set_cap_sys_admin(void)
+{
+  cap_t caps;
+  if (!(caps = cap_get_proc()))
+    die("Cannot get capabilities: %m");
+
+  cap_value_t cap_list[] = { CAP_SYS_ADMIN };
+  if (cap_set_flag(caps, CAP_EFFECTIVE, 1, cap_list, CAP_SET) < 0)
+    die("Cannot modify capabilities");
+
+  if (cap_set_proc(caps) < 0)
+    die("Cannot set capabilities: %m");
+
+  cap_free(caps);
+}
+
+void
+apply_dir_rules(void)
 {
   for (struct dir_rule *r = first_dir_rule; r; r=r->next)
     {
@@ -304,10 +323,32 @@ void apply_dir_rules(void)
 	{
 	  mount_flags |= MS_BIND | MS_NOSUID;
 	  msg("Binding %s on %s (flags %lx)\n", out, in, mount_flags);
+
+	  /*
+	   *  This is tricky. We cannot run mount() with root privileges, since
+	   *  it could be used to bypass access control if the mounted path
+	   *  contains elements inaccessible to the user running isolate.
+	   *
+	   *  We switch effective UID and GID back to the calling user (which clears
+	   *  all capabilities, but keeps them in the permitted set) and then
+	   *  enable CAP_SYS_ADMIN. So we have CAP_SYS_ADMIN (needed for mount),
+	   *  but not CAP_DAC_OVERRIDE (which allows to bypass permission checks).
+	   */
+
+	  if (setresuid(orig_uid, orig_uid, 0) < 0 ||
+	      setresgid(orig_gid, orig_gid, 0) < 0)
+	    die("Cannot switch UID and GID: %m");
+
+	  set_cap_sys_admin();
+
 	  // Most mount flags need remount to work
 	  if (mount(out, root_in, "none", mount_flags, "") < 0 ||
 	      mount(out, root_in, "none", MS_REMOUNT | mount_flags, "") < 0)
 	    die("Cannot mount %s on %s: %m", out, in);
+
+	  if (setresuid(orig_uid, 0, orig_uid) < 0 ||
+	      setresgid(orig_gid, 0, orig_gid) < 0)
+	    die("Cannot switch UID and GID: %m");
 	}
     }
 }

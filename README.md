@@ -21,3 +21,6 @@ If you are interested in more details, please read Martin's
 and Bernard's [paper](http://mj.ucw.cz/papers/isolate.pdf) presented
 at the IOI Conference. Also, Isolate's [manual page](http://www.ucw.cz/moe/isolate.1.html)
 is available online.
+
+To compile Isolate, you need the headers for the libcap library
+(usually available in a libcap-dev package).
