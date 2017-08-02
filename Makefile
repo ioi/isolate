@@ -1,7 +1,8 @@
 # Makefile for Isolate
 # (c) 2015--2017 Martin Mares <mj@ucw.cz>
+# (c) 2017 Bernard Blackham <bernard@blackham.com.au>
 
-all: isolate isolate.1 isolate.1.html
+all: isolate isolate.1 isolate.1.html isolate-check-environment
 
 CC=gcc
 CFLAGS=-std=gnu99 -Wall -Wextra -Wno-parentheses -Wno-unused-result -Wno-missing-field-initializers -Wstrict-prototypes -Wmissing-prototypes -D_GNU_SOURCE
@@ -45,8 +46,8 @@ clean:
 	rm -f isolate isolate.1 isolate.1.html
 	rm -f docbook-xsl.css
 
-install: isolate
-	install -D $< $(BINDIR)/$<
+install: isolate isolate-check-environment
+	install -D $^ $(BINDIR)
 	chmod u+s $(BINDIR)/$<
 	install -d $(BOXDIR)
 	install -m 644 -D default.cf $(CONFIG)

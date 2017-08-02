@@ -293,7 +293,8 @@ REPRODUCIBILITY
 ---------------
 
 The reproducibility of results can be improved by tuning some kernel
-parameters:
+parameters, listed below. Some of these parameters can be checked using the
+program isolate-check-environment.
 
 * Disable address space randomization: +sysctl kernel.randomize_va_space=0+.
 Address space randomization can affect timing, memory usage, and program
