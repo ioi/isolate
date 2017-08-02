@@ -148,12 +148,11 @@ swap_check
 # Check that CPU frequency scaling is disabled.
 cpufreq_check() {
     print_start_check "CPU frequency scaling"
-    local any policy
+    local anycpus policy
     anycpus=
     # Ensure cpufreq governor is set to performance on all CPUs
-    find /sys/devices/system/cpu/cpufreq/ -name scaling_governor |
-    while read cpufreq_file ; do
-        policy=$(cat $i)
+    for cpufreq_file in $(find /sys/devices/system/cpu/cpufreq/ -name scaling_governor) ; do
+        policy=$(cat $cpufreq_file)
         if [ "$policy" != "performance" ] ; then
             print_fail
             action \
