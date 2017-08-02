@@ -1,0 +1,17 @@
+language: c
+
+compiler: gcc
+
+addons:
+  apt:
+    packages:
+      - asciidoc
+      - libcap-dev
+      - libxml2-utils
+      - xsltproc
+      - docbook-xml
+      - docbook-xsl
+
+script:
+  - make DESTDIR=/tmp/isolate
+  - make DESTDIR=/tmp/isolate install
