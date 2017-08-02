@@ -47,7 +47,7 @@ clean:
 	rm -f docbook-xsl.css
 
 install: isolate isolate-check-environment
-	install -D $^ $(BINDIR)
+	install -t $(BINDIR) -D $^
 	chmod u+s $(BINDIR)/$<
 	install -d $(BOXDIR)
 	install -m 644 -D default.cf $(CONFIG)
