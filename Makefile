@@ -8,8 +8,8 @@ CC=gcc
 CFLAGS=-std=gnu99 -Wall -Wextra -Wno-parentheses -Wno-unused-result -Wno-missing-field-initializers -Wstrict-prototypes -Wmissing-prototypes -D_GNU_SOURCE
 LIBS=-lcap
 
-VERSION=1.3
-YEAR=2016
+VERSION=1.4
+YEAR=2017
 BUILD_DATE:=$(shell date '+%Y-%m-%d')
 BUILD_COMMIT:=$(shell if git rev-parse >/dev/null 2>/dev/null ; then git describe --always ; else echo '<unknown>' ; fi)
 
@@ -55,4 +55,12 @@ install: isolate isolate-check-environment
 install-doc: isolate.1
 	install -m 644 -D $< $(MAN1DIR)/$<
 
-.PHONY: all clean install install-doc
+release: isolate.1.html
+	git tag v$(VERSION)
+	git push --tags
+	git archive --format=tar --prefix=isolate-$(VERSION)/ HEAD | gzip >isolate-$(VERSION).tar.gz
+	rsync isolate-$(VERSION).tar.gz atrey:ftp/isolate/
+	rsync isolate.1.html jw:/var/www/moe/
+	ssh jw 'cd web && bin/release-prog isolate $(VERSION)'
+
+.PHONY: all clean install install-doc release
