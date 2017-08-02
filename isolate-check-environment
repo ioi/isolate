@@ -49,9 +49,9 @@ done
 
 # Some helper boilerplate machinery.
 exit_status=0
-red=$(tput setaf 9)
-green=$(tput setaf 10)
-yellow=$(tput setaf 11)
+red=$(tput setaf 1)
+green=$(tput setaf 2)
+yellow=$(tput setaf 3)
 normal=$(tput sgr0)
 
 # Return true (0) if we are being quiet.
