@@ -112,15 +112,18 @@ chowntree(char *path, uid_t uid, gid_t gid)
   nftw(path, chowntree_helper, 32, FTW_MOUNT | FTW_PHYS);
 }
 
+static FILE *metafile;
+
 void
 close_all_fds(void)
 {
-  /* Close all file descriptors except 0, 1, 2 */
+  /* Close all file descriptors except 0, 1, 2 and meta-file */
 
   DIR *dir = opendir("/proc/self/fd");
   if (!dir)
     die("Cannot open /proc/self/fd: %m");
   int dir_fd = dirfd(dir);
+  int meta_fd = fileno(metafile);  // -1 if metafile is NULL
 
   struct dirent *e;
   while (e = readdir(dir))
@@ -129,7 +132,7 @@ close_all_fds(void)
       long int fd = strtol(e->d_name, &end, 10);
       if (*end)
 	continue;
-      if (fd >= 0 && fd <= 2 || fd == dir_fd)
+      if (fd >= 0 && fd <= 2 || fd == meta_fd || fd == dir_fd)
 	continue;
       close(fd);
     }
@@ -138,8 +141,6 @@ close_all_fds(void)
 }
 
 /*** Meta-files ***/
-
-static FILE *metafile;
 
 void
 meta_open(const char *name)
