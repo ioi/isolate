@@ -47,13 +47,14 @@ clean:
 	rm -f docbook-xsl.css
 
 install: isolate isolate-check-environment
-	install -D $^ $(BINDIR)
-	chmod u+s $(BINDIR)/$<
-	install -d $(BOXDIR)
-	install -m 644 -D default.cf $(CONFIG)
+	install -d $(BINDIR) $(BOXDIR) $(CONFIGDIR)
+	install isolate-check-environment $(BINDIR)
+	install -m 4755 isolate $(BINDIR)
+	install -m 644 default.cf $(CONFIG)
 
 install-doc: isolate.1
-	install -m 644 -D $< $(MAN1DIR)/$<
+	install -d $(MAN1DIR)
+	install -m 644 $< $(MAN1DIR)/$<
 
 release: isolate.1.html
 	git tag v$(VERSION)
