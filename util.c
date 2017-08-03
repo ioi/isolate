@@ -112,6 +112,8 @@ chowntree(char *path, uid_t uid, gid_t gid)
   nftw(path, chowntree_helper, 32, FTW_MOUNT | FTW_PHYS);
 }
 
+static int fd_to_keep = -1;
+
 void
 close_all_fds(void)
 {
@@ -129,7 +131,7 @@ close_all_fds(void)
       long int fd = strtol(e->d_name, &end, 10);
       if (*end)
 	continue;
-      if (fd >= 0 && fd <= 2 || fd == dir_fd)
+      if (fd >= 0 && fd <= 2 || fd == dir_fd || fd == fd_to_keep)
 	continue;
       close(fd);
     }
@@ -152,6 +154,7 @@ meta_open(const char *name)
   if (setfsuid(getuid()) < 0)
     die("Failed to switch FS UID: %m");
   metafile = fopen(name, "w");
+  fd_to_keep = fileno(metafile);
   if (setfsuid(geteuid()) < 0)
     die("Failed to switch FS UID back: %m");
   if (!metafile)
