@@ -154,11 +154,11 @@ meta_open(const char *name)
   if (setfsuid(getuid()) < 0)
     die("Failed to switch FS UID: %m");
   metafile = fopen(name, "w");
-  fd_to_keep = fileno(metafile);
   if (setfsuid(geteuid()) < 0)
     die("Failed to switch FS UID back: %m");
   if (!metafile)
     die("Failed to open metafile '%s'",name);
+  fd_to_keep = fileno(metafile);
 }
 
 void
