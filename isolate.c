@@ -641,7 +641,10 @@ static void
 cleanup(void)
 {
   if (!dir_exists("box"))
-    die("Box directory not found, there isn't anything to clean up");
+    {
+      msg("Nothing to do -- box directory did not exist\n");
+      return;
+    }
 
   msg("Deleting sandbox directory\n");
   rmtree(box_dir);
