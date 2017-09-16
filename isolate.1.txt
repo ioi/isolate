@@ -23,7 +23,7 @@ by contestants in a controlled environment.
 The sandbox is used in the following way:
 
 * Run *isolate --init*, which initializes the sandbox, creates its working directory and
-prints its name to the standard output.
+prints its name to the standard output. Fails if the sandbox already existed.
 
 * Populate the directory with the executable file of the program and its
 input files.
@@ -33,7 +33,8 @@ status of the program is written to the standard error stream.
 
 * Fetch the output of the program from the directory.
 
-* Run *isolate --cleanup* to remove temporary files.
+* Run *isolate --cleanup* to remove temporary files. Does nothing if the sandbox
+was already cleaned up.
 
 Please note that by default, the program is not allowed to start multiple
 processes of threads. If you need that, turn on the control group mode
