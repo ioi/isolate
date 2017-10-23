@@ -101,9 +101,8 @@ OPTIONS
 
 *-r, --stderr=*'file'::
 	Redirect standard error output to 'file'. The 'file' has to be accessible
-	inside the sandbox. Otherwise, standard error output is inherited from
-	the parent process and both the sandboxed process and the sandbox manager
-	can write their status messages to it.
+	inside the sandbox. Otherwise, standard error output is redirected to stdout
+	(either inherited from parent process or redirected to file via previous option).
 
 *-c, --chdir=*'dir'::
 	Change directory to 'dir' before executing the program. This path must be
@@ -255,6 +254,9 @@ of format 'key'*:*'value'. The following keys are defined:
 	Run time of the program in fractional seconds.
 *time-wall*::
 	Wall clock time of the program in fractional seconds.
+
+Notice, that many of these keys maybe absent.
+For example, no *exitcode*, *status* or *message* on normal termination.
 
 RETURN VALUE
 ------------
