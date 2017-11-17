@@ -440,18 +440,17 @@ box_keeper(void)
 	  die("%s", interr);
 	}
 
+      final_stats(&rus);
+      if (timeout && total_ms > timeout)
+	err("TO: Time limit exceeded");
+      if (wall_timeout && wall_ms > wall_timeout)
+	err("TO: Time limit exceeded (wall clock)");
+
       if (WIFEXITED(stat))
 	{
-	  final_stats(&rus);
+	  meta_printf("exitcode:%d\n", WEXITSTATUS(stat));
 	  if (WEXITSTATUS(stat))
-	    {
-	      meta_printf("exitcode:%d\n", WEXITSTATUS(stat));
-	      err("RE: Exited with error status %d", WEXITSTATUS(stat));
-	    }
-	  if (timeout && total_ms > timeout)
-	    err("TO: Time limit exceeded");
-	  if (wall_timeout && wall_ms > wall_timeout)
-	    err("TO: Time limit exceeded (wall clock)");
+	    err("RE: Exited with error status %d", WEXITSTATUS(stat));
 	  flush_line();
 	  if (!silent)
 	    {
@@ -464,13 +463,11 @@ box_keeper(void)
       else if (WIFSIGNALED(stat))
 	{
 	  meta_printf("exitsig:%d\n", WTERMSIG(stat));
-	  final_stats(&rus);
 	  err("SG: Caught fatal signal %d", WTERMSIG(stat));
 	}
       else if (WIFSTOPPED(stat))
 	{
 	  meta_printf("exitsig:%d\n", WSTOPSIG(stat));
-	  final_stats(&rus);
 	  err("SG: Stopped by signal %d", WSTOPSIG(stat));
 	}
       else
