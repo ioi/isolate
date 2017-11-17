@@ -255,8 +255,8 @@ of format 'key'*:*'value'. The following keys are defined:
 *time-wall*::
 	Wall clock time of the program in fractional seconds.
 
-Notice, that many of these keys maybe absent.
-For example, no *exitcode*, *status* or *message* on normal termination.
+Please note that not all keys have to be present.
+For example, no *status* nor *message* is reported upon normal termination.
 
 RETURN VALUE
 ------------
