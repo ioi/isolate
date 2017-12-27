@@ -580,9 +580,9 @@ box_inside(void *arg)
   reset_signals();
   cg_enter();
   setup_root();
+  setup_rlimits();
   setup_credentials();
   setup_fds();
-  setup_rlimits();
   char **env = setup_environment();
 
   if (set_cwd && chdir(set_cwd))
