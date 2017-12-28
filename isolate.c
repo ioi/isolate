@@ -536,8 +536,6 @@ setup_fds(void)
       if (open(redir_stderr, O_WRONLY | O_CREAT | O_TRUNC, 0666) != 2)
 	die("open(\"%s\"): %m", redir_stderr);
     }
-  else
-    dup2(1, 2);
 }
 
 static void

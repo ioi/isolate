@@ -101,8 +101,8 @@ OPTIONS
 
 *-r, --stderr=*'file'::
 	Redirect standard error output to 'file'. The 'file' has to be accessible
-	inside the sandbox. Otherwise, standard error output is redirected to stdout
-	(either inherited from parent process or redirected to file via previous option).
+	inside the sandbox. Otherwise, standard error output is inherited from the
+	parent process.
 
 *-c, --chdir=*'dir'::
 	Change directory to 'dir' before executing the program. This path must be
@@ -122,12 +122,11 @@ OPTIONS
 	in parent's network namespace.
 
 *--inherit-fds*::
-	By default, isolate closes all file descriptors passed from its parent.
+	By default, isolate closes all file descriptors passed from its parent
+	except for descriptors 0, 1, and 2.
 	This prevents unintentional descriptor leaks. In some cases, passing extra
 	descriptors to the sandbox can be desirable, so you can use this switch
-	to make them survive. However, descriptors 0, 1, and 2 are always handled
-	specially and redirected either to the file specified by *--stdin* and friends,
-	or to /dev/null.
+	to make them survive.
 
 *-v, --verbose*::
 	Tell the sandbox manager to be verbose and report on what is going on.
