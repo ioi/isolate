@@ -541,6 +541,11 @@ setup_fds(void)
 static void
 setup_rlim(const char *res_name, int res, rlim_t limit)
 {
+  struct rlimit old;
+  if (getrlimit(res, &old) < 0)
+    die("getrlimit(%s, %jd)", res_name, (intmax_t) limit);
+  if (old.rlim_max < limit)
+    limit = old.rlim_max;
   struct rlimit rl = { .rlim_cur = limit, .rlim_max = limit };
   if (setrlimit(res, &rl) < 0)
     die("setrlimit(%s, %jd)", res_name, (intmax_t) limit);
