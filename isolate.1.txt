@@ -327,6 +327,10 @@ configuration file to pin the process to a specified CPU.
 and /sys/kernel/mm/transparent_hugepage/defrag should be set to "madvise" or "never", and
 /sys/kernel/mm/transparent_hugepage/khugepaged/defrag to 0.
 
+* Disable swapping. If you really need swap space and you are using cgroups,
+make sure that you have the memsw controller enabled, so that swap space is
+properly accounted for.
+
 LICENSE
 -------
 Isolate was written by Martin Mares and Bernard Blackham.
