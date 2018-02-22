@@ -46,8 +46,9 @@
  * We are running three processes:
  *
  *   - Keeper process (root privileges, parent namespace, parent cgroups)
- *   - Proxy process (root privileges, init process of the child namespace, parent cgroups)
- *   - Inside process (per-box UID, child namespace, child cgroups)
+ *   - Proxy process (UID/GID of the calling user, init process of the child
+ *     namespace, parent cgroups)
+ *   - Inside process (per-box UID/GID, child namespace, child cgroups)
  *
  * The proxy process just waits for the inside process to exit and then it passes
  * the exit status to the keeper.
@@ -618,6 +619,17 @@ box_inside(char **args)
 
 /*** Proxy ***/
 
+static void
+setup_orig_credentials(void)
+{
+  if (setresgid(orig_gid, orig_gid, orig_gid) < 0)
+    die("setresgid: %m");
+  if (setgroups(0, NULL) < 0)
+    die("setgroups: %m");
+  if (setresuid(orig_uid, orig_uid, orig_uid) < 0)
+    die("setresuid: %m");
+}
+
 static int
 box_proxy(void *arg)
 {
@@ -638,6 +650,8 @@ box_proxy(void *arg)
       box_inside(args);
       _exit(42);	// We should never get here
     }
+
+  setup_orig_credentials();
 
   int stat;
   pid_t p = waitpid(inside_pid, &stat, 0);
