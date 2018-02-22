@@ -42,7 +42,8 @@ dir_exists(char *path)
   return (stat(path, &st) >= 0 && S_ISDIR(st.st_mode));
 }
 
-void make_dir(char *path)
+void
+make_dir(char *path)
 {
   char *sep = (path[0] == '/' ? path+1 : path);
 
@@ -70,8 +71,8 @@ void make_dir(char *path)
 }
 
 
-static int rmtree_helper(const char *fpath, const struct stat *sb,
-    int typeflag UNUSED, struct FTW *ftwbuf UNUSED)
+static int
+rmtree_helper(const char *fpath, const struct stat *sb, int typeflag UNUSED, struct FTW *ftwbuf UNUSED)
 {
   if (S_ISDIR(sb->st_mode))
     {
@@ -95,8 +96,8 @@ rmtree(char *path)
 static uid_t chown_uid;
 static gid_t chown_gid;
 
-static int chowntree_helper(const char *fpath, const struct stat *sb UNUSED,
-    int typeflag UNUSED, struct FTW *ftwbuf UNUSED)
+static int
+chowntree_helper(const char *fpath, const struct stat *sb UNUSED, int typeflag UNUSED, struct FTW *ftwbuf UNUSED)
 {
   if (lchown(fpath, chown_uid, chown_gid) < 0)
     die("Cannot chown %s: %m", fpath);

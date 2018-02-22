@@ -40,13 +40,15 @@ static const struct cg_controller_desc cg_controllers[CG_NUM_CONTROLLERS+1] = {
   for (cg_controller (_controller) = 0; \
        (_controller) < CG_NUM_CONTROLLERS; (_controller)++)
 
-static const char *cg_controller_name(cg_controller c)
+static const char *
+cg_controller_name(cg_controller c)
 {
   assert(c < CG_NUM_CONTROLLERS);
   return cg_controllers[c].name;
 }
 
-static int cg_controller_optional(cg_controller c)
+static int
+cg_controller_optional(cg_controller c)
 {
   assert(c < CG_NUM_CONTROLLERS);
   return cg_controllers[c].optional;

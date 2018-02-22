@@ -177,7 +177,8 @@ static const char * const dir_flag_names[] = { "rw", "noexec", "fs", "maybe", "d
 static struct dir_rule *first_dir_rule;
 static struct dir_rule **last_dir_rule = &first_dir_rule;
 
-static char *sanitize_dir_path(char *path)
+static char *
+sanitize_dir_path(char *path)
 {
   // Strip leading slashes
   while (*path == '/')
@@ -203,7 +204,8 @@ static char *sanitize_dir_path(char *path)
   return path;
 }
 
-static int add_dir_rule(char *in, char *out, unsigned int flags)
+static int
+add_dir_rule(char *in, char *out, unsigned int flags)
 {
   // Make sure that "in" does not try to escape the box
   in = sanitize_dir_path(in);
@@ -242,7 +244,8 @@ static int add_dir_rule(char *in, char *out, unsigned int flags)
   return 1;
 }
 
-static unsigned int parse_dir_option(char *opt)
+static unsigned int
+parse_dir_option(char *opt)
 {
   for (unsigned int i = 0; i < ARRAY_SIZE(dir_flag_names); i++)
     if (!strcmp(opt, dir_flag_names[i]))
@@ -250,7 +253,8 @@ static unsigned int parse_dir_option(char *opt)
   die("Unknown directory option %s", opt);
 }
 
-int set_dir_action(char *arg)
+int
+set_dir_action(char *arg)
 {
   arg = xstrdup(arg);
 
@@ -280,7 +284,8 @@ int set_dir_action(char *arg)
     }
 }
 
-void init_dir_rules(void)
+void
+init_dir_rules(void)
 {
   set_dir_action("box=./box:rw");
   set_dir_action("bin");
