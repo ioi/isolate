@@ -169,6 +169,7 @@ enum dir_rule_flags {
   DIR_FLAG_FS = 4,
   DIR_FLAG_MAYBE = 8,
   DIR_FLAG_DEV = 16,
+  DIR_FLAG_DISABLED = 1U << 16,	// Used internally
 };
 
 static const char * const dir_flag_names[] = { "rw", "noexec", "fs", "maybe", "dev" };
@@ -310,25 +311,44 @@ set_cap_sys_admin(void)
 void
 apply_dir_rules(void)
 {
+  /*
+   * Before mounting anything, we create all mount points inside the box.
+   * This is necessary to avoid bypassing directory permissions. If you
+   * want nested binds, you have to create the mount points explicitly.
+   */
   for (struct dir_rule *r = first_dir_rule; r; r=r->next)
     {
       char *in = r->inside;
       char *out = r->outside;
+
       if (!out)
 	{
-	  msg("Not binding anything on %s\n", r->inside);
+	  msg("Not binding anything on %s\n", in);
+	  r->flags |= DIR_FLAG_DISABLED;
 	  continue;
 	}
 
       if ((r->flags & DIR_FLAG_MAYBE) && !dir_exists(out))
 	{
 	  msg("Not binding %s on %s (does not exist)\n", out, r->inside);
+	  r->flags |= DIR_FLAG_DISABLED;
 	  continue;
 	}
 
       char root_in[1024];
       snprintf(root_in, sizeof(root_in), "root/%s", in);
       make_dir(root_in);
+    }
+
+  for (struct dir_rule *r = first_dir_rule; r; r=r->next)
+    {
+      if (r->flags & DIR_FLAG_DISABLED)
+	continue;
+
+      char *in = r->inside;
+      char *out = r->outside;
+      char root_in[1024];
+      snprintf(root_in, sizeof(root_in), "root/%s", in);
 
       unsigned long mount_flags = 0;
       if (!(r->flags & DIR_FLAG_RW))
