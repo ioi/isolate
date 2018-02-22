@@ -176,12 +176,37 @@ static const char * const dir_flag_names[] = { "rw", "noexec", "fs", "maybe", "d
 static struct dir_rule *first_dir_rule;
 static struct dir_rule **last_dir_rule = &first_dir_rule;
 
+static char *sanitize_dir_path(char *path)
+{
+  // Strip leading slashes
+  while (*path == '/')
+    path++;
+  if (!*path)
+    return NULL;
+
+  // Check for ".." components
+  char *p = path;
+  while (*p)
+    {
+      char *next = strchr(p, '/');
+      if (!next)
+	next = p + strlen(p);
+
+      int len = next - p;
+      if (len == 2 && !memcmp(p, "..", 2))
+	return NULL;
+
+      p = *next ? next+1 : next;
+    }
+
+  return path;
+}
+
 static int add_dir_rule(char *in, char *out, unsigned int flags)
 {
-  // Make sure that "in" is relative
-  while (in[0] == '/')
-    in++;
-  if (!*in)
+  // Make sure that "in" does not try to escape the box
+  in = sanitize_dir_path(in);
+  if (!in)
     return 0;
 
   // Check "out"
