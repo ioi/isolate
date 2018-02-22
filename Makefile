@@ -11,7 +11,7 @@ LIBS=-lcap
 VERSION=1.4.1
 YEAR=2017
 BUILD_DATE:=$(shell date '+%Y-%m-%d')
-BUILD_COMMIT:=$(shell if git rev-parse >/dev/null 2>/dev/null ; then git describe --always ; else echo '<unknown>' ; fi)
+BUILD_COMMIT:=$(shell if git rev-parse >/dev/null 2>/dev/null ; then git describe --always --tags ; else echo '<unknown>' ; fi)
 
 PREFIX = $(DESTDIR)/usr/local
 VARPREFIX = $(DESTDIR)/var/local
