@@ -1,7 +1,7 @@
 /*
  *	A Process Isolator based on Linux Containers
  *
- *	(c) 2012-2017 Martin Mares <mj@ucw.cz>
+ *	(c) 2012-2018 Martin Mares <mj@ucw.cz>
  *	(c) 2012-2014 Bernard Blackham <bernard@blackham.com.au>
  */
 
@@ -34,6 +34,30 @@
 #warning "Working around old glibc: no MS_REC"
 #define MS_REC     (1 << 14)
 #endif
+
+/*
+ * Theory of operation
+ *
+ * Generally, we want to run a process inside a namespace/cgroup and watch it
+ * from the outside. However, the reality is a little bit more complicated as we
+ * do not want the inside process to become the init process of the PID namespace
+ * (we want to have all signals properly delivered).
+ *
+ * We are running three processes:
+ *
+ *   - Keeper process (root privileges, parent namespace, parent cgroups)
+ *   - Proxy process (root privileges, init process of the child namespace, parent cgroups)
+ *   - Inside process (per-box UID, child namespace, child cgroups)
+ *
+ * The proxy process just waits for the inside process to exit and then it passes
+ * the exit status to the keeper.
+ *
+ * We use two pipes:
+ *
+ *   - Error pipe for error messages produced by the proxy process and the early
+ *     stages of the inside process (until exec()). Listened to by the keeper.
+ *   - Status pipe for passing the exit status from the proxy to the keeper.
+ */
 
 #define TIMER_INTERVAL_US 100000
 
@@ -78,6 +102,8 @@ static volatile sig_atomic_t timer_tick, interrupt;
 static int error_pipes[2];
 static int write_errors_to_fd;
 static int read_errors_from_fd;
+
+static int status_pipes[2];
 
 static int get_wall_time_ms(void);
 static int get_run_time_ms(struct rusage *rus);
@@ -386,6 +412,7 @@ box_keeper(void)
 {
   read_errors_from_fd = error_pipes[0];
   close(error_pipes[1]);
+  close(status_pipes[1]);
 
   gettimeofday(&start_time, NULL);
   ticks_per_sec = sysconf(_SC_CLK_TCK);
@@ -439,6 +466,11 @@ box_keeper(void)
 	  interr[n] = 0;
 	  die("%s", interr);
 	}
+
+      // Check status pipe if there is an exit status reported by the proxy process
+      n = read(status_pipes[0], &stat, sizeof(stat));
+      if (n != sizeof(stat))
+	die("Did not receive exit status from proxy");
 
       final_stats(&rus);
       if (timeout && total_ms > timeout)
@@ -568,14 +600,8 @@ setup_rlimits(void)
 }
 
 static int
-box_inside(void *arg)
+box_inside(char **args)
 {
-  char **args = arg;
-  write_errors_to_fd = error_pipes[1];
-  close(error_pipes[0]);
-  meta_close();
-
-  reset_signals();
   cg_enter();
   setup_root();
   setup_rlimits();
@@ -588,6 +614,40 @@ box_inside(void *arg)
 
   execve(args[0], args, env);
   die("execve(\"%s\"): %m", args[0]);
+}
+
+/*** Proxy ***/
+
+static int
+box_proxy(void *arg)
+{
+  char **args = arg;
+
+  write_errors_to_fd = error_pipes[1];
+  close(error_pipes[0]);
+  close(status_pipes[0]);
+  meta_close();
+  reset_signals();
+
+  pid_t inside_pid = fork();
+  if (inside_pid < 0)
+    die("Cannot run process, fork failed: %m");
+  else if (!inside_pid)
+    {
+      close(status_pipes[1]);
+      box_inside(args);
+      _exit(42);	// We should never get here
+    }
+
+  int stat;
+  pid_t p = waitpid(inside_pid, &stat, 0);
+  if (p < 0)
+    die("Proxy waitpid() failed: %m");
+
+  if (write(status_pipes[1], &stat, sizeof(stat)) != sizeof(stat))
+    die("Proxy write to pipe failed: %m");
+
+  _exit(0);
 }
 
 static void
@@ -647,6 +707,17 @@ cleanup(void)
 }
 
 static void
+setup_pipe(int *fds)
+{
+  if (pipe(fds) < 0)
+    die("pipe: %m");
+  for (int i=0; i<2; i++)
+    if (fcntl(fds[i], F_SETFD, fcntl(fds[i], F_GETFD) | FD_CLOEXEC) < 0 ||
+        fcntl(fds[i], F_SETFL, fcntl(fds[i], F_GETFL) | O_NONBLOCK) < 0)
+      die("fcntl on pipe: %m");
+}
+
+static void
 run(char **argv)
 {
   if (!dir_exists("box"))
@@ -658,24 +729,19 @@ run(char **argv)
   chowntree("box", box_uid, box_gid);
   cleanup_ownership = 1;
 
-  if (pipe(error_pipes) < 0)
-    die("pipe: %m");
-  for (int i=0; i<2; i++)
-    if (fcntl(error_pipes[i], F_SETFD, fcntl(error_pipes[i], F_GETFD) | FD_CLOEXEC) < 0 ||
-        fcntl(error_pipes[i], F_SETFL, fcntl(error_pipes[i], F_GETFL) | O_NONBLOCK) < 0)
-      die("fcntl on pipe: %m");
-
+  setup_pipe(error_pipes);
+  setup_pipe(status_pipes);
   setup_signals();
 
   box_pid = clone(
-    box_inside,			// Function to execute as the body of the new process
+    box_proxy,			// Function to execute as the body of the new process
     argv,			// Pass our stack
     SIGCHLD | CLONE_NEWIPC | (share_net ? 0 : CLONE_NEWNET) | CLONE_NEWNS | CLONE_NEWPID,
     argv);			// Pass the arguments
   if (box_pid < 0)
-    die("clone: %m");
+    die("Cannot run proxy, clone failed: %m");
   if (!box_pid)
-    die("clone returned 0");
+    die("Cannot run proxy, clone returned 0");
   box_keeper();
 }
 
