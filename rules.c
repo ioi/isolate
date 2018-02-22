@@ -1,7 +1,7 @@
 /*
  *	Process Isolator -- Rules
  *
- *	(c) 2012-2017 Martin Mares <mj@ucw.cz>
+ *	(c) 2012-2018 Martin Mares <mj@ucw.cz>
  *	(c) 2012-2014 Bernard Blackham <bernard@blackham.com.au>
  */
 
@@ -318,6 +318,13 @@ apply_dir_rules(void)
 	  msg("Mounting %s on %s (flags %lx)\n", out, in, mount_flags);
 	  if (mount("none", root_in, out, mount_flags, "") < 0)
 	    die("Cannot mount %s on %s: %m", out, in);
+	  if (!strcmp(in, "proc"))
+	    {
+	      // If we are mounting procfs, add hidepid=2, so that only the processes
+	      // of the same user are visible. This has to be done as a remount.
+	      if (mount("none", root_in, out, MS_REMOUNT | mount_flags, "hidepid=2") < 0)
+		die("Cannot re-mount proc with hidepid option: %m");
+	    }
 	}
       else
 	{
