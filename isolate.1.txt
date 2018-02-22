@@ -102,8 +102,11 @@ OPTIONS
 *-r, --stderr=*'file'::
 	Redirect standard error output to 'file'. The 'file' has to be accessible
 	inside the sandbox. Otherwise, standard error output is inherited from the
-	parent process. Stderr is redirected after stdout, so *--stderr=/dev/fd/1*
-	works (assuming that */dev* is available inside the box).
+	parent process. See also *--stderr-to-stdout*.
+
+*--stderr-to-stdout*::
+	Redirect standard error output to standard output. This is performed after
+	the standard output is redirected by *--stdout*. Mutually exclusive with *--stderr*.
 
 *-c, --chdir=*'dir'::
 	Change directory to 'dir' before executing the program. This path must be

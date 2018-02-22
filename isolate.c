@@ -50,6 +50,7 @@ int block_quota;
 int inode_quota;
 static int max_processes = 1;
 static char *redir_stdin, *redir_stdout, *redir_stderr;
+static int redir_stderr_to_stdout;
 static char *set_cwd;
 static int share_net;
 static int inherit_fds;
@@ -536,6 +537,11 @@ setup_fds(void)
       if (open(redir_stderr, O_WRONLY | O_CREAT | O_TRUNC, 0666) != 2)
 	die("open(\"%s\"): %m", redir_stderr);
     }
+  if (redir_stderr_to_stdout)
+    {
+      if (dup2(1, 2) < 0)
+	die("Cannot dup stdout to stderr: %m");
+    }
 }
 
 static void
@@ -731,6 +737,7 @@ Options:\n\
 -s, --silent\t\tDo not print status messages except for fatal errors\n\
 -k, --stack=<size>\tLimit stack size to <size> KB (default: 0=unlimited)\n\
 -r, --stderr=<file>\tRedirect stderr to <file>\n\
+    --stderr-to-stdout\tRedirect stderr to stdout\n\
 -i, --stdin=<file>\tRedirect stdin from <file>\n\
 -o, --stdout=<file>\tRedirect stdout to <file>\n\
 -p, --processes[=<max>]\tEnable multiple processes (at most <max> of them); needs --cg\n\
@@ -757,6 +764,7 @@ enum opt_code {
   OPT_CG_TIMING,
   OPT_SHARE_NET,
   OPT_INHERIT_FDS,
+  OPT_STDERR_TO_STDOUT,
 };
 
 static const char short_opts[] = "b:c:d:eE:f:i:k:m:M:o:p::q:r:st:vw:x:";
@@ -784,6 +792,7 @@ static const struct option long_opts[] = {
   { "silent",		0, NULL, 's' },
   { "stack",		1, NULL, 'k' },
   { "stderr",		1, NULL, 'r' },
+  { "stderr-to-stdout",	0, NULL, OPT_STDERR_TO_STDOUT },
   { "stdin",		1, NULL, 'i' },
   { "stdout",		1, NULL, 'o' },
   { "time",		1, NULL, 't' },
@@ -858,6 +867,7 @@ main(int argc, char **argv)
 	break;
       case 'r':
 	redir_stderr = optarg;
+	redir_stderr_to_stdout = 0;
 	break;
       case 's':
 	silent++;
@@ -894,6 +904,10 @@ main(int argc, char **argv)
 	break;
       case OPT_INHERIT_FDS:
 	inherit_fds = 1;
+	break;
+      case OPT_STDERR_TO_STDOUT:
+	redir_stderr = NULL;
+	redir_stderr_to_stdout = 1;
 	break;
       default:
 	usage(NULL);
