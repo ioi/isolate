@@ -290,13 +290,9 @@ cg_remove(void)
 
   FOREACH_CG_CONTROLLER(controller)
     {
-      if (cg_controller_optional(controller))
-	{
-	  if (!cg_read(controller, "?tasks", buf))
-	    continue;
-	}
-      else
-	cg_read(controller, "tasks", buf);
+      // The cgroup can be non-existent at this moment (e.g., --cleanup before the first --init)
+      if (!cg_read(controller, "?tasks", buf))
+	continue;
 
       if (buf[0])
 	die("Some tasks left in controller %s of cgroup %s, failed to remove it",
