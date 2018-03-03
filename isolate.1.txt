@@ -230,6 +230,9 @@ of format 'key'*:*'value'. The following keys are defined:
 *cg-mem*::
 	When control groups are enabled, this is the total memory use
 	by the whole control group (in kilobytes).
+*cg-oom-killed*::
+	Present when the program was killed by the OOM killer (e.g., because it has
+	exceeded the memory limit of its control group).
 *csw-forced*::
 	Number of context switches forced by the kernel.
 *csw-voluntary*::
