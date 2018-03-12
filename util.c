@@ -84,7 +84,7 @@ rmtree_helper(const char *fpath, const struct stat *sb, int typeflag UNUSED, str
       if (unlink(fpath) < 0)
 	die("Cannot unlink %s: %m", fpath);
     }
-  return FTW_CONTINUE;
+  return 0;
 }
 
 void
@@ -102,7 +102,7 @@ chowntree_helper(const char *fpath, const struct stat *sb UNUSED, int typeflag U
   if (lchown(fpath, chown_uid, chown_gid) < 0)
     die("Cannot chown %s: %m", fpath);
   else
-    return FTW_CONTINUE;
+    return 0;
 }
 
 void
