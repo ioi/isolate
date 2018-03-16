@@ -84,7 +84,7 @@ rmtree_helper(const char *fpath, const struct stat *sb, int typeflag UNUSED, str
       if (unlink(fpath) < 0)
 	die("Cannot unlink %s: %m", fpath);
     }
-  return FTW_CONTINUE;
+  return 0;
 }
 
 void
