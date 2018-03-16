@@ -232,7 +232,8 @@ of format 'key'*:*'value'. The following keys are defined:
 	by the whole control group (in kilobytes).
 *cg-oom-killed*::
 	Present when the program was killed by the OOM killer (e.g., because it has
-	exceeded the memory limit of its control group).
+	exceeded the memory limit of its control group). Only present for recent
+	kernel versions (Linux v4.13 and after).
 *csw-forced*::
 	Number of context switches forced by the kernel.
 *csw-voluntary*::
