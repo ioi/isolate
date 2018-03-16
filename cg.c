@@ -287,7 +287,9 @@ cg_stats(void)
       int oom_killed = 0;
       const char *oom_kill_line = strstr(buf, "oom_kill ");
 
-      if (oom_kill_line && sscanf(oom_kill_line, "oom_kill %d", &oom_killed))
+      if (oom_kill_line
+          && (oom_kill_line == buf || *(oom_kill_line - 1) == '\n')
+          && sscanf(oom_kill_line, "oom_kill %d", &oom_killed))
         if (oom_killed)
           meta_printf("cg-oom-killed:1\n");
     }
