@@ -80,6 +80,7 @@ static int redir_stderr_to_stdout;
 static char *set_cwd;
 static int share_net;
 static int inherit_fds;
+static int default_dirs = 1;
 
 int cg_enable;
 int cg_memory_limit;
@@ -544,7 +545,7 @@ setup_root(void)
   if (mount("none", "root", "tmpfs", 0, "mode=755") < 0)
     die("Cannot mount root ramdisk: %m");
 
-  apply_dir_rules();
+  apply_dir_rules(default_dirs);
 
   if (chroot("root") < 0)
     die("Chroot failed: %m");
@@ -864,6 +865,7 @@ Options:\n\
 \t\t\t\tmaybe\tSkip the rule if <out> does not exist\n\
 \t\t\t\tnoexec\tDo not allow execution of binaries\n\
 \t\t\t\trw\tAllow read-write access\n\
+-D, --no-default-dirs\tDo not add default directory rules\n\
 -f, --fsize=<size>\tMax size (in KB) of files that can be created\n\
 -E, --env=<var>\t\tInherit the environment variable <var> from the parent process\n\
 -E, --env=<var>=<val>\tSet the environment variable <var> to <val>; unset it if <var> is empty\n\
@@ -908,7 +910,7 @@ enum opt_code {
   OPT_STDERR_TO_STDOUT,
 };
 
-static const char short_opts[] = "b:c:d:eE:f:i:k:m:M:o:p::q:r:st:vw:x:";
+static const char short_opts[] = "b:c:d:DeE:f:i:k:m:M:o:p::q:r:st:vw:x:";
 
 static const struct option long_opts[] = {
   { "box-id",		1, NULL, 'b' },
@@ -918,6 +920,7 @@ static const struct option long_opts[] = {
   { "cg-timing",	0, NULL, OPT_CG_TIMING },
   { "cleanup",		0, NULL, OPT_CLEANUP },
   { "dir",		1, NULL, 'd' },
+  { "no-default-dirs",  0, NULL, 'D' },
   { "fsize",		1, NULL, 'f' },
   { "env",		1, NULL, 'E' },
   { "extra-time",	1, NULL, 'x' },
@@ -968,6 +971,9 @@ main(int argc, char **argv)
 	if (!set_dir_action(optarg))
 	  usage("Invalid directory specified: %s\n", optarg);
 	break;
+      case 'D':
+        default_dirs = 0;
+        break;
       case 'e':
 	pass_environ = 1;
 	break;

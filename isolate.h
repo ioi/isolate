@@ -52,7 +52,7 @@ char **setup_environment(void);
 
 void init_dir_rules(void);
 int set_dir_action(char *arg);
-void apply_dir_rules(void);
+void apply_dir_rules(int with_defaults);
 
 void set_quota(void);
 

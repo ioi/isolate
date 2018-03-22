@@ -169,6 +169,7 @@ enum dir_rule_flags {
   DIR_FLAG_FS = 4,
   DIR_FLAG_MAYBE = 8,
   DIR_FLAG_DEV = 16,
+  DIR_FLAG_DEFAULT = 1U << 15,	// Used internally
   DIR_FLAG_DISABLED = 1U << 16,	// Used internally
 };
 
@@ -253,13 +254,13 @@ parse_dir_option(char *opt)
   die("Unknown directory option %s", opt);
 }
 
-int
-set_dir_action(char *arg)
+static int
+set_dir_action_ext(char *arg, unsigned int ext_flags)
 {
   arg = xstrdup(arg);
 
   char *colon = strchr(arg, ':');
-  unsigned int flags = 0;
+  unsigned int flags = ext_flags;
   while (colon)
     {
       *colon++ = 0;
@@ -284,16 +285,28 @@ set_dir_action(char *arg)
     }
 }
 
+int
+set_dir_action(char *arg)
+{
+  return set_dir_action_ext(arg, 0);
+}
+
+static int
+set_dir_action_default(char *arg)
+{
+  return set_dir_action_ext(arg, DIR_FLAG_DEFAULT);
+}
+
 void
 init_dir_rules(void)
 {
-  set_dir_action("box=./box:rw");
-  set_dir_action("bin");
-  set_dir_action("dev:dev");
-  set_dir_action("lib");
-  set_dir_action("lib64:maybe");
-  set_dir_action("proc=proc:fs");
-  set_dir_action("usr");
+  set_dir_action_default("box=./box:rw");
+  set_dir_action_default("bin");
+  set_dir_action_default("dev:dev");
+  set_dir_action_default("lib");
+  set_dir_action_default("lib64:maybe");
+  set_dir_action_default("proc=proc:fs");
+  set_dir_action_default("usr");
 }
 
 static void
@@ -314,7 +327,7 @@ set_cap_sys_admin(void)
 }
 
 void
-apply_dir_rules(void)
+apply_dir_rules(int with_defaults)
 {
   /*
    * Before mounting anything, we create all mount points inside the box.
@@ -323,6 +336,9 @@ apply_dir_rules(void)
    */
   for (struct dir_rule *r = first_dir_rule; r; r=r->next)
     {
+      if (!with_defaults && (r->flags & DIR_FLAG_DEFAULT))
+        continue;
+
       char *in = r->inside;
       char *out = r->outside;
 
@@ -349,6 +365,8 @@ apply_dir_rules(void)
     {
       if (r->flags & DIR_FLAG_DISABLED)
 	continue;
+      if (!with_defaults && (r->flags & DIR_FLAG_DEFAULT))
+        continue;
 
       char *in = r->inside;
       char *out = r->outside;
