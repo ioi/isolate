@@ -105,7 +105,7 @@ cg_read(cg_controller controller, const char *attr, char *buf)
   buf[n] = 0;
 
   if (verbose > 1)
-    msg("CG: Read %s = %s\n", attr, buf);
+    msg("CG: Read %s = <%s>\n", attr, buf);
 
   result = 1;
 fail_close:
@@ -280,6 +280,24 @@ cg_stats(void)
     }
   if (mem)
     meta_printf("cg-mem:%lld\n", mem >> 10);
+
+  // OOM kill detection
+  if (cg_read(CG_MEMORY, "?memory.oom_control", buf))
+    {
+      int oom_killed = 0;
+      char *s = buf;
+      while (s)
+	{
+	  if (sscanf(s, "oom_kill %d", &oom_killed) == 1 && oom_killed)
+	    {
+	      meta_printf("cg-oom-killed:1\n");
+	      break;
+	    }
+	  s = strchr(s, '\n');
+	  if (s)
+	    s++;
+	}
+    }
 }
 
 void
