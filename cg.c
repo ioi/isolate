@@ -280,6 +280,19 @@ cg_stats(void)
     }
   if (mem)
     meta_printf("cg-mem:%lld\n", mem >> 10);
+
+  // OOM kill detection
+  if (cg_read(CG_MEMORY, "?memory.oom_control", buf))
+    {
+      int oom_killed = 0;
+      const char *oom_kill_line = strstr(buf, "oom_kill ");
+
+      if (oom_kill_line
+          && (oom_kill_line == buf || *(oom_kill_line - 1) == '\n')
+          && sscanf(oom_kill_line, "oom_kill %d", &oom_killed))
+        if (oom_killed)
+          meta_printf("cg-oom-killed:1\n");
+    }
 }
 
 void
