@@ -57,7 +57,8 @@
  *
  *   - Error pipe for error messages produced by the proxy process and the early
  *     stages of the inside process (until exec()). Listened to by the keeper.
- *   - Status pipe for passing the exit status from the proxy to the keeper.
+ *   - Status pipe for passing the PID of the inside process and its exit status
+ *     from the proxy to the keeper.
  */
 
 #define TIMER_INTERVAL_US 100000
@@ -87,6 +88,7 @@ int cg_timing;
 int box_id;
 static char box_dir[1024];
 static pid_t box_pid;
+static pid_t proxy_pid;
 
 uid_t box_uid;
 gid_t box_gid;
@@ -130,16 +132,21 @@ final_stats(struct rusage *rus)
 static void NONRET
 box_exit(int rc)
 {
-  if (box_pid > 0)
+  if (proxy_pid > 0)
     {
-      kill(-box_pid, SIGKILL);
-      kill(box_pid, SIGKILL);
+      if (box_pid > 0)
+	{
+	  kill(-box_pid, SIGKILL);
+	  kill(box_pid, SIGKILL);
+	}
+      kill(-proxy_pid, SIGKILL);
+      kill(proxy_pid, SIGKILL);
       meta_printf("killed:1\n");
 
       struct rusage rus;
       int p, stat;
       do
-	p = wait4(box_pid, &stat, 0, &rus);
+	p = wait4(proxy_pid, &stat, 0, &rus);
       while (p < 0 && errno == EINTR);
       if (p < 0)
 	fprintf(stderr, "UGH: Lost track of the process (%m)\n");
@@ -171,11 +178,16 @@ die(char *msg, ...)
   char buf[1024];
   int n = vsnprintf(buf, sizeof(buf), msg, args);
 
-  // If the child process is still running, show no mercy.
+  // If the child processes are still running, show no mercy.
   if (box_pid > 0)
     {
       kill(-box_pid, SIGKILL);
       kill(box_pid, SIGKILL);
+    }
+  if (proxy_pid > 0)
+    {
+      kill(-proxy_pid, SIGKILL);
+      kill(proxy_pid, SIGKILL);
     }
 
   if (write_errors_to_fd)
@@ -331,7 +343,7 @@ read_proc_file(char *buf, char *name, int *fdp)
 
   if (!*fdp)
     {
-      sprintf(buf, "/proc/%d/%s", (int) box_pid, name);
+      snprintf(buf, PROC_BUF_SIZE, "/proc/%d/%s", (int) box_pid, name);
       *fdp = open(buf, O_RDONLY);
       if (*fdp < 0)
 	die("open(%s): %m", buf);
@@ -365,6 +377,10 @@ get_run_time_ms(struct rusage *rus)
       timeradd(&rus->ru_utime, &rus->ru_stime, &total);
       return total.tv_sec*1000 + total.tv_usec/1000;
     }
+
+  // It might happen that we do not know the box_pid (see comments in find_box_pid())
+  if (!box_pid)
+    return 0;
 
   char buf[PROC_BUF_SIZE], *x;
   int utime, stime;
@@ -449,16 +465,16 @@ box_keeper(void)
 	  check_timeout();
 	  timer_tick = 0;
 	}
-      p = wait4(box_pid, &stat, 0, &rus);
+      p = wait4(proxy_pid, &stat, 0, &rus);
       if (p < 0)
 	{
 	  if (errno == EINTR)
 	    continue;
 	  die("wait4: %m");
 	}
-      if (p != box_pid)
+      if (p != proxy_pid)
 	die("wait4: unknown pid %d exited!", p);
-      box_pid = 0;
+      proxy_pid = 0;
 
       // Check error pipe if there is an internal error passed from inside the box
       char interr[1024];
@@ -658,6 +674,8 @@ box_proxy(void *arg)
     }
 
   setup_orig_credentials();
+  if (write(status_pipes[1], &inside_pid, sizeof(inside_pid)) != sizeof(inside_pid))
+    die("Proxy write to pipe failed: %m");
 
   int stat;
   pid_t p = waitpid(inside_pid, &stat, 0);
@@ -727,14 +745,49 @@ cleanup(void)
 }
 
 static void
-setup_pipe(int *fds)
+setup_pipe(int *fds, int nonblocking)
 {
   if (pipe(fds) < 0)
     die("pipe: %m");
   for (int i=0; i<2; i++)
     if (fcntl(fds[i], F_SETFD, fcntl(fds[i], F_GETFD) | FD_CLOEXEC) < 0 ||
-        fcntl(fds[i], F_SETFL, fcntl(fds[i], F_GETFL) | O_NONBLOCK) < 0)
+        nonblocking && fcntl(fds[i], F_SETFL, fcntl(fds[i], F_GETFL) | O_NONBLOCK) < 0)
       die("fcntl on pipe: %m");
+}
+
+static void
+find_box_pid(void)
+{
+  /*
+   *  The box keeper process wants to poll status of the inside process,
+   *  so it needs to know the box_pid. However, it is not easy to obtain:
+   *  we got the PID from the proxy, but it is local to the PID namespace.
+   *  Instead, we ask /proc to enumerate the children of the proxy.
+   *
+   *  CAVEAT: The timing is tricky. We know that the inside process was
+   *  already started (passing the PID from the proxy to us guarantees it),
+   *  but it might already have exited and be reaped by the proxy. Therefore
+   *  it is correct if we fail to find anything.
+   */
+
+  char namebuf[256];
+  snprintf(namebuf, sizeof(namebuf), "/proc/%d/task/%d/children", (int) proxy_pid, (int) proxy_pid);
+  FILE *f = fopen(namebuf, "r");
+  if (!f)
+    return;
+
+  int child;
+  if (fscanf(f, "%d", &child) != 1)
+    {
+      fclose(f);
+      return;
+    }
+  box_pid = child;
+
+  if (fscanf(f, "%d", &child) == 1)
+    die("Error parsing %s: unexpected children found", namebuf);
+
+  fclose(f);
 }
 
 static void
@@ -749,19 +802,28 @@ run(char **argv)
   chowntree("box", box_uid, box_gid);
   cleanup_ownership = 1;
 
-  setup_pipe(error_pipes);
-  setup_pipe(status_pipes);
+  setup_pipe(error_pipes, 1);
+  setup_pipe(status_pipes, 0);
   setup_signals();
 
-  box_pid = clone(
+  proxy_pid = clone(
     box_proxy,			// Function to execute as the body of the new process
     argv,			// Pass our stack
     SIGCHLD | CLONE_NEWIPC | (share_net ? 0 : CLONE_NEWNET) | CLONE_NEWNS | CLONE_NEWPID,
     argv);			// Pass the arguments
-  if (box_pid < 0)
+  if (proxy_pid < 0)
     die("Cannot run proxy, clone failed: %m");
-  if (!box_pid)
+  if (!proxy_pid)
     die("Cannot run proxy, clone returned 0");
+
+  pid_t box_pid_inside_ns;
+  int n = read(status_pipes[0], &box_pid_inside_ns, sizeof(box_pid_inside_ns));
+  if (n != sizeof(box_pid_inside_ns))
+    die("Proxy failed before it passed box_pid: %m");
+  find_box_pid();
+  if (verbose > 1)
+    fprintf(stderr, "Started proxy_pid=%d box_pid=%d box_pid_inside_ns=%d\n", (int) proxy_pid, (int) box_pid, (int) box_pid_inside_ns);
+
   box_keeper();
 }
 
