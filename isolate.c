@@ -821,8 +821,7 @@ run(char **argv)
   if (n != sizeof(box_pid_inside_ns))
     die("Proxy failed before it passed box_pid: %m");
   find_box_pid();
-  if (verbose > 1)
-    fprintf(stderr, "Started proxy_pid=%d box_pid=%d box_pid_inside_ns=%d\n", (int) proxy_pid, (int) box_pid, (int) box_pid_inside_ns);
+  msg("Started proxy_pid=%d box_pid=%d box_pid_inside_ns=%d\n", (int) proxy_pid, (int) box_pid, (int) box_pid_inside_ns);
 
   box_keeper();
 }
