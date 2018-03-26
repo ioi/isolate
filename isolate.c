@@ -950,6 +950,7 @@ int
 main(int argc, char **argv)
 {
   int c;
+  int require_cg = 0;
   char *sep;
   enum opt_code mode = 0;
 
@@ -1042,9 +1043,11 @@ main(int argc, char **argv)
 	break;
       case OPT_CG_MEM:
 	cg_memory_limit = atoi(optarg);
+	require_cg = 1;
 	break;
       case OPT_CG_TIMING:
 	cg_timing = 1;
+	require_cg = 1;
 	break;
       case OPT_SHARE_NET:
 	share_net = 1;
@@ -1067,6 +1070,9 @@ main(int argc, char **argv)
       show_version();
       return 0;
     }
+
+  if (require_cg && !cg_enable)
+    usage("Options related to control groups require --cg to be set.\n");
 
   if (geteuid())
     die("Must be started as root");
