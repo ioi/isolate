@@ -225,6 +225,7 @@ section.
 	Use control groups for timing, so that the *--time* switch affects the
 	total run time of all processes and threads in the control group.
 	This should be specified with *--run*.
+	This option is turned on by default, use *--no-cg-timing* to turn off.
 
 META-FILES
 ----------
