@@ -337,17 +337,17 @@ reset_signals(void)
 /*** The keeper process ***/
 
 #define PROC_BUF_SIZE 4096
-static void
+static int
 read_proc_file(char *buf, char *name, int *fdp)
 {
   int c;
 
-  if (!*fdp)
+  if (*fdp < 0)
     {
       snprintf(buf, PROC_BUF_SIZE, "/proc/%d/%s", (int) box_pid, name);
       *fdp = open(buf, O_RDONLY);
       if (*fdp < 0)
-	die("open(%s): %m", buf);
+	return 0;	// This is OK, the process could have finished
     }
   lseek(*fdp, 0, SEEK_SET);
   if ((c = read(*fdp, buf, PROC_BUF_SIZE-1)) < 0)
@@ -355,6 +355,7 @@ read_proc_file(char *buf, char *name, int *fdp)
   if (c >= PROC_BUF_SIZE-1)
     die("/proc/$pid/%s too long", name);
   buf[c] = 0;
+  return 1;
 }
 
 static int
@@ -385,9 +386,10 @@ get_run_time_ms(struct rusage *rus)
 
   char buf[PROC_BUF_SIZE], *x;
   int utime, stime;
-  static int proc_stat_fd;
+  static int proc_stat_fd = -1;
 
-  read_proc_file(buf, "stat", &proc_stat_fd);
+  if (!read_proc_file(buf, "stat", &proc_stat_fd))
+    return 0;
   x = buf;
   while (*x && *x != ' ')
     x++;
