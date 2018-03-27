@@ -351,7 +351,10 @@ read_proc_file(char *buf, char *name, int *fdp)
     }
   lseek(*fdp, 0, SEEK_SET);
   if ((c = read(*fdp, buf, PROC_BUF_SIZE-1)) < 0)
-    die("read on /proc/$pid/%s: %m", name);
+    {
+      // Even this could fail if the process disappeared since open()
+      return 0;
+    }
   if (c >= PROC_BUF_SIZE-1)
     die("/proc/$pid/%s too long", name);
   buf[c] = 0;
