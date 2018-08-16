@@ -954,6 +954,19 @@ static const struct option long_opts[] = {
   { NULL,		0, NULL, 0 }
 };
 
+static unsigned int
+opt_uint(char *val)
+{
+  char *end;
+  errno = 0;
+  unsigned long int x = strtoul(val, &end, 10);
+  if (errno || end == val || end && *end)
+    usage("Invalid numeric parameter: %s\n", val);
+  if ((unsigned long int)(unsigned int) x != x)
+    usage("Numeric parameter out of range: %s\n", val);
+  return x;
+}
+
 int
 main(int argc, char **argv)
 {
@@ -968,7 +981,7 @@ main(int argc, char **argv)
     switch (c)
       {
       case 'b':
-	box_id = atoi(optarg);
+	box_id = opt_uint(optarg);
 	break;
       case 'c':
 	set_cwd = optarg;
@@ -991,16 +1004,16 @@ main(int argc, char **argv)
 	  usage("Invalid environment specified: %s\n", optarg);
 	break;
       case 'f':
-        fsize_limit = atoi(optarg);
+        fsize_limit = opt_uint(optarg);
         break;
       case 'k':
-	stack_limit = atoi(optarg);
+	stack_limit = opt_uint(optarg);
 	break;
       case 'i':
 	redir_stdin = optarg;
 	break;
       case 'm':
-	memory_limit = atoi(optarg);
+	memory_limit = opt_uint(optarg);
 	break;
       case 'M':
 	meta_open(optarg);
@@ -1010,7 +1023,7 @@ main(int argc, char **argv)
 	break;
       case 'p':
 	if (optarg)
-	  max_processes = atoi(optarg);
+	  max_processes = opt_uint(optarg);
 	else
 	  max_processes = 0;
 	break;
@@ -1018,8 +1031,8 @@ main(int argc, char **argv)
 	sep = strchr(optarg, ',');
 	if (!sep)
 	  usage("Invalid quota specified: %s\n", optarg);
-	block_quota = atoi(optarg);
-	inode_quota = atoi(sep+1);
+	block_quota = opt_uint(optarg);
+	inode_quota = opt_uint(sep+1);
 	break;
       case 'r':
 	redir_stderr = optarg;
@@ -1050,7 +1063,7 @@ main(int argc, char **argv)
 	  usage("Only one command is allowed.\n");
 	break;
       case OPT_CG_MEM:
-	cg_memory_limit = atoi(optarg);
+	cg_memory_limit = opt_uint(optarg);
 	require_cg = 1;
 	break;
       case OPT_CG_TIMING:
