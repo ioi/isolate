@@ -206,6 +206,15 @@ the working directory to +/box+ (read-write) and mounts the proc filesystem at +
 	the correct set of rules (using *--dir*) for the executed program to run
 	correctly. In particular, +/box+ has to be bound.
 
+The rules are executed in the order in which they are given. Default rules come before
+all user rules. When a rule is replaced, it retains the original position
+in the order. This matters when one rule's 'in' is a sub-directory of another
+rule's 'in'. For example if you first bind to 'a' and then to 'a/b', it will work as
+expected, but a sub-directory 'b' must have existed in the directory bound to 'a' (isolate
+never creates subdirectories in bound directories for security reasons). If the
+order is 'a/b' before 'a', then the directory bound to 'a/b' becomes invisible
+by the later binding on 'a'.
+
 CONTROL GROUPS
 --------------
 Isolate can make use of system control groups provided by the kernel
