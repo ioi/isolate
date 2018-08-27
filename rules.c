@@ -169,11 +169,12 @@ enum dir_rule_flags {
   DIR_FLAG_FS = 4,
   DIR_FLAG_MAYBE = 8,
   DIR_FLAG_DEV = 16,
+  DIR_FLAG_TMP = 32,
   DIR_FLAG_DEFAULT = 1U << 15,	// Used internally
   DIR_FLAG_DISABLED = 1U << 16,	// Used internally
 };
 
-static const char * const dir_flag_names[] = { "rw", "noexec", "fs", "maybe", "dev" };
+static const char * const dir_flag_names[] = { "rw", "noexec", "fs", "maybe", "dev", "tmp" };
 
 static struct dir_rule *first_dir_rule;
 static struct dir_rule **last_dir_rule = &first_dir_rule;
@@ -212,18 +213,6 @@ add_dir_rule(char *in, char *out, unsigned int flags)
   in = sanitize_dir_path(in);
   if (!in)
     return 0;
-
-  // Check "out"
-  if (flags & DIR_FLAG_FS)
-    {
-      if (!out || out[0] == '/')
-	return 0;
-    }
-  else
-    {
-      if (out && out[0] != '/' && strncmp(out, "./", 2))
-	return 0;
-    }
 
   // Override an existing rule
   struct dir_rule *r;
@@ -273,9 +262,41 @@ set_dir_action_ext(char *arg, unsigned int ext_flags)
 
   char *eq = strchr(arg, '=');
   if (eq)
+    *eq++ = 0;
+
+  if ((flags & DIR_FLAG_FS) && (flags & DIR_FLAG_TMP))
+    return 0;
+
+  if (flags & DIR_FLAG_FS)
     {
-      *eq++ = 0;
-      return add_dir_rule(arg, (*eq ? eq : NULL), flags);
+      if (!eq || strchr(eq, '/'))
+	return 0;
+      return add_dir_rule(arg, eq, flags);
+    }
+  else if (flags & DIR_FLAG_TMP)
+    {
+      if (eq)
+	return 0;
+      /*
+       *  Construct an outside temporary directory, which will be later
+       *  chowned to box_uid. The hierarchy of these directories is intentionally
+       *  flat, so that we avoid writing to a directory which might have already
+       *  tampered with in a previous run of the sandbox.
+       */
+      char out[1024];
+      snprintf(out, sizeof(out), "./tmp/%s", arg);
+      for (char *p = out + strlen("./tmp/"); *p; p++)
+	if (*p == '/')
+	  *p = ':';		// This is safe, there were no colons in "out"
+      return add_dir_rule(arg, xstrdup(out), flags | DIR_FLAG_RW);
+    }
+  else if (eq)
+    {
+      if (!eq[0])
+	return add_dir_rule(arg, NULL, flags);
+      if (eq[0] != '/' && strncmp(eq, "./", 2))
+	return 0;
+      return add_dir_rule(arg, eq, flags);
     }
   else
     {
@@ -306,6 +327,7 @@ init_dir_rules(void)
   set_dir_action_default("lib");
   set_dir_action_default("lib64:maybe");
   set_dir_action_default("proc=proc:fs");
+  set_dir_action_default("tmp:tmp");
   set_dir_action_default("usr");
 }
 
@@ -372,6 +394,15 @@ apply_dir_rules(int with_defaults)
       char *out = r->outside;
       char root_in[1024];
       snprintf(root_in, sizeof(root_in), "root/%s", in);
+
+      if (r->flags & DIR_FLAG_TMP)
+	{
+	  make_dir(out);
+	  if (chown(out, box_uid, box_gid) < 0)
+	    die("Cannot chown %s: %m", out);
+	  if (chmod(out, 0700) < 0)
+	    die("Cannot chmod %s: %m", out);
+	}
 
       unsigned long mount_flags = 0;
       if (!(r->flags & DIR_FLAG_RW))

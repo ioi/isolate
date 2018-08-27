@@ -871,6 +871,7 @@ Options:\n\
 \t\t\t\tmaybe\tSkip the rule if <out> does not exist\n\
 \t\t\t\tnoexec\tDo not allow execution of binaries\n\
 \t\t\t\trw\tAllow read-write access\n\
+\t\t\t\ttmp\tCreate as a temporary directory (implies rw)\n\
 -D, --no-default-dirs\tDo not add default directory rules\n\
 -f, --fsize=<size>\tMax size (in KB) of files that can be created\n\
 -E, --env=<var>\t\tInherit the environment variable <var> from the parent process\n\
@@ -991,7 +992,7 @@ main(int argc, char **argv)
 	break;
       case 'd':
 	if (!set_dir_action(optarg))
-	  usage("Invalid directory specified: %s\n", optarg);
+	  usage("Invalid directory rule specified: %s\n", optarg);
 	break;
       case 'D':
         default_dirs = 0;

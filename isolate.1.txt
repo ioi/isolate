@@ -197,9 +197,14 @@ no setuid binaries). This behavior can be modified using the 'options':
 	Instead of binding a directory, mount a device-less filesystem called 'in'.
 	For example, this can be 'proc' or 'sysfs'.
 
+*tmp*::
+	Bind a freshly created temporary directory writeable for the sandbox user.
+	Accepts no 'out', implies *rw*.
+
 Unless *--no-default-dirs* is specified, the default set of directory rules binds +/bin+,
 +/dev+ (with devices allowed), +/lib+, +/lib64+ (if it exists), and +/usr+. It also binds
-the working directory to +/box+ (read-write) and mounts the proc filesystem at +/proc+.
+the working directory to +/box+ (read-write), mounts the proc filesystem at +/proc+, and
+creates a temporary directory +/tmp+.
 
 *-D, --no-default-dirs*::
 	Do not bind the default set of directories. Care has to be taken to specify
