@@ -1029,9 +1029,11 @@ main(int argc, char **argv)
 	  max_processes = 0;
 	break;
       case 'q':
+	optarg = xstrdup(optarg);
 	sep = strchr(optarg, ',');
 	if (!sep)
 	  usage("Invalid quota specified: %s\n", optarg);
+	*sep++ = 0;
 	block_quota = opt_uint(optarg);
 	inode_quota = opt_uint(sep+1);
 	break;
