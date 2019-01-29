@@ -814,7 +814,7 @@ run(char **argv)
 
   proxy_pid = clone(
     box_proxy,			// Function to execute as the body of the new process
-    argv,			// Pass our stack
+    (void*)((uintptr_t)argv & ~(uintptr_t)15),	// Pass our stack, aligned to 16-bytes
     SIGCHLD | CLONE_NEWIPC | (share_net ? 0 : CLONE_NEWNET) | CLONE_NEWNS | CLONE_NEWPID,
     argv);			// Pass the arguments
   if (proxy_pid < 0)
