@@ -170,11 +170,12 @@ enum dir_rule_flags {
   DIR_FLAG_MAYBE = 8,
   DIR_FLAG_DEV = 16,
   DIR_FLAG_TMP = 32,
+  DIR_FLAG_NOREC = 64,
   DIR_FLAG_DEFAULT = 1U << 15,	// Used internally
   DIR_FLAG_DISABLED = 1U << 16,	// Used internally
 };
 
-static const char * const dir_flag_names[] = { "rw", "noexec", "fs", "maybe", "dev", "tmp" };
+static const char * const dir_flag_names[] = { "rw", "noexec", "fs", "maybe", "dev", "tmp", "norec" };
 
 static struct dir_rule *first_dir_rule;
 static struct dir_rule **last_dir_rule = &first_dir_rule;
@@ -428,6 +429,8 @@ apply_dir_rules(int with_defaults)
       else
 	{
 	  mount_flags |= MS_BIND | MS_NOSUID;
+	  if (!(r->flags & DIR_FLAG_NOREC))
+	    mount_flags |= MS_REC;
 	  msg("Binding %s on %s (flags %lx)\n", out, in, mount_flags);
 
 	  /*

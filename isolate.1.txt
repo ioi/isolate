@@ -201,6 +201,10 @@ no setuid binaries). This behavior can be modified using the 'options':
 	Bind a freshly created temporary directory writeable for the sandbox user.
 	Accepts no 'out', implies *rw*.
 
+*norec*::
+	Do not bind recursively. Without this option, mount points in the outside
+	directory tree are automatically propagated to the sandbox.
+
 Unless *--no-default-dirs* is specified, the default set of directory rules binds +/bin+,
 +/dev+ (with devices allowed), +/lib+, +/lib64+ (if it exists), and +/usr+. It also binds
 the working directory to +/box+ (read-write), mounts the proc filesystem at +/proc+, and
