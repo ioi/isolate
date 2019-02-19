@@ -140,10 +140,13 @@ box_exit(int rc)
 	  kill(-box_pid, SIGKILL);
 	  kill(box_pid, SIGKILL);
 	}
-      kill(-proxy_pid, SIGKILL);
-      kill(proxy_pid, SIGKILL);
       meta_printf("killed:1\n");
 
+      /*
+       *  The rusage will contain time spent by the proxy and its children (i.e., the box).
+       *  We must be carefull not to kill the proxy explicitly, because it could cause the proxy
+       *  to finish before its child, so the child would be re-parented and its run time lost.
+       */
       struct rusage rus;
       int p, stat;
       do
@@ -496,6 +499,7 @@ box_keeper(void)
       if (n != sizeof(stat))
 	die("Did not receive exit status from proxy");
 
+      // At this point, the rusage includes time spent by the proxy's children.
       final_stats(&rus);
       if (timeout && total_ms > timeout)
 	err("TO: Time limit exceeded");
