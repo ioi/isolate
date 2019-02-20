@@ -144,7 +144,7 @@ box_exit(int rc)
 
       /*
        *  The rusage will contain time spent by the proxy and its children (i.e., the box).
-       *  We must be carefull not to kill the proxy explicitly, because it could cause the proxy
+       *  We must be careful not to kill the proxy explicitly, because it could cause the proxy
        *  to finish before its child, so the child would be re-parented and its run time lost.
        */
       struct rusage rus;
