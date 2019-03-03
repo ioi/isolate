@@ -1052,7 +1052,7 @@ main(int argc, char **argv)
 	sep = strchr(optarg, ',');
 	if (!sep)
 	  usage("Invalid quota specified: %s\n", optarg);
-	*sep++ = 0;
+	*sep = 0;
 	block_quota = opt_uint(optarg);
 	inode_quota = opt_uint(sep+1);
 	break;
