@@ -140,12 +140,27 @@ box_exit(int rc)
 	  kill(-box_pid, SIGKILL);
 	  kill(box_pid, SIGKILL);
 	}
+      if (cg_enable)
+	{
+	  /*
+	   *  In non-CG mode, we must not kill the proxy explicitly.
+	   *  This is important, because the proxy could exit before the box
+	   *  completes its exit, causing rusage of the box to be lost.
+	   *
+	   *  In CG mode, we must kill the proxy, because it is the init
+	   *  process of the CG and killing it causes all other processes
+	   *  inside the CG to be killed. However, we do not care about
+	   *  rusage (unless somebody asks for --no-cg-timing, which is not
+	   *  reliable anyway).
+	   */
+	  kill(-proxy_pid, SIGKILL);
+	  kill(proxy_pid, SIGKILL);
+	}
       meta_printf("killed:1\n");
 
       /*
        *  The rusage will contain time spent by the proxy and its children (i.e., the box).
-       *  We must be careful not to kill the proxy explicitly, because it could cause the proxy
-       *  to finish before its child, so the child would be re-parented and its run time lost.
+       *  (See comments on killing of the proxy above, though.)
        */
       struct rusage rus;
       int p, stat;
