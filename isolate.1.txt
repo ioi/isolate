@@ -323,6 +323,14 @@ filesystem is enabled and mounted.  Most modern Linux distributions already
 provide cgroup support through a tmpfs mounted at /sys/fs/cgroup, with
 individual controllers mounted within subdirectories.
 
+Isolate expects that the root directory "/" is a mount point. When running
+isolate inside a chroot, this may not be the case, and isolate may fail with
+"Cannot privatize mounts". A workaround for this is to convert the root
+directory of the chroot into a mount point using a bind mount, prior to
+entering the chroot and running isolate. For example:
+
+    mount --bind /path/to/chroot /path/to/chroot
+
 REPRODUCIBILITY
 ---------------
 
