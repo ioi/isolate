@@ -588,6 +588,13 @@ setup_credentials(void)
   if (setresuid(box_uid, box_uid, box_uid) < 0)
     die("setresuid: %m");
   setpgrp();
+  if (isatty(1))
+    {
+      // If stdout is a tty, make us the foreground process group
+      signal(SIGTTOU, SIG_IGN);
+      tcsetpgrp(1, getpgrp());
+      signal(SIGTTOU, SIG_DFL);
+    }
 }
 
 static void
