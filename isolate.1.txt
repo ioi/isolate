@@ -141,6 +141,15 @@ OPTIONS
 	to stderr except for fatal errors of the sandbox itself. The combination of
 	*--verbose* and *--silent* has an undefined effect.
 
+*--tty-hack*::
+	Try to handle interactive programs communicating over a tty.
+	The sandboxed program will run in a separate process group, which will temporarily
+	become the foreground process group of the terminal. When the program exits, the
+	process group will be switched back to the caller. Please note that the program
+	can do many nasty things including (but not limited to) changing terminal settings,
+	changing the line discipline, and stuffing characters to the terminal's input queue
+	using the TIOCSTI ioctl. Use with extreme caution.
+
 ENVIRONMENT RULES
 -----------------
 UNIX processes normally inherit all environment variables from their parent. The

@@ -1,7 +1,7 @@
 /*
  *	A Process Isolator based on Linux Containers
  *
- *	(c) 2012-2019 Martin Mares <mj@ucw.cz>
+ *	(c) 2012-2020 Martin Mares <mj@ucw.cz>
  *	(c) 2012-2014 Bernard Blackham <bernard@blackham.com.au>
  */
 
@@ -81,6 +81,7 @@ static char *set_cwd;
 static int share_net;
 static int inherit_fds;
 static int default_dirs = 1;
+static int tty_hack;
 
 int cg_enable;
 int cg_memory_limit;
@@ -171,6 +172,16 @@ box_exit(int rc)
 	fprintf(stderr, "UGH: Lost track of the process (%m)\n");
       else
 	final_stats(&rus);
+    }
+
+  if (tty_hack && isatty(1))
+    {
+      /*
+       *  If stdout is a tty, make us the foreground process group again.
+       *  We do not need it (we ignore SIGTTOU anyway), but programs executed
+       *  after our exit will.
+       */
+      tcsetpgrp(1, getpgrp());
     }
 
   if (rc < 2 && cleanup_ownership)
@@ -292,6 +303,7 @@ static const struct signal_rule signal_rules[] = {
   { SIGUSR1,	SIGNAL_IGNORE },
   { SIGUSR2,	SIGNAL_IGNORE },
   { SIGBUS,	SIGNAL_FATAL },
+  { SIGTTOU,	SIGNAL_IGNORE },
 };
 
 static void
@@ -588,7 +600,7 @@ setup_credentials(void)
   if (setresuid(box_uid, box_uid, box_uid) < 0)
     die("setresuid: %m");
   setpgrp();
-  if (isatty(1))
+  if (tty_hack && isatty(1))
     {
       // If stdout is a tty, make us the foreground process group
       signal(SIGTTOU, SIG_IGN);
@@ -918,6 +930,7 @@ Options:\n\
 -o, --stdout=<file>\tRedirect stdout to <file>\n\
 -p, --processes[=<max>]\tEnable multiple processes (at most <max> of them); needs --cg\n\
 -t, --time=<time>\tSet run time limit (seconds, fractions allowed)\n\
+    --tty-hack\t\tAllow interactive programs in the sandbox (see man for caveats)\n\
 -v, --verbose\t\tBe verbose (use multiple times for even more verbosity)\n\
 -w, --wall-time=<time>\tSet wall clock time limit (seconds, fractions allowed)\n\
 \n\
@@ -942,6 +955,7 @@ enum opt_code {
   OPT_SHARE_NET,
   OPT_INHERIT_FDS,
   OPT_STDERR_TO_STDOUT,
+  OPT_TTY_HACK,
 };
 
 static const char short_opts[] = "b:c:d:DeE:f:i:k:m:M:o:p::q:r:st:vw:x:";
@@ -975,6 +989,7 @@ static const struct option long_opts[] = {
   { "stdin",		1, NULL, 'i' },
   { "stdout",		1, NULL, 'o' },
   { "time",		1, NULL, 't' },
+  { "tty-hack",		0, NULL, OPT_TTY_HACK },
   { "verbose",		0, NULL, 'v' },
   { "version",		0, NULL, OPT_VERSION },
   { "wall-time",	1, NULL, 'w' },
@@ -1112,6 +1127,9 @@ main(int argc, char **argv)
       case OPT_STDERR_TO_STDOUT:
 	redir_stderr = NULL;
 	redir_stderr_to_stdout = 1;
+	break;
+      case OPT_TTY_HACK:
+	tty_hack = 1;
 	break;
       default:
 	usage(NULL);
