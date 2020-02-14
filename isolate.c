@@ -70,6 +70,7 @@ int pass_environ;
 int verbose;
 static int silent;
 static int fsize_limit;
+static int fnumber_limit;
 static int memory_limit;
 static int stack_limit;
 int block_quota;
@@ -657,7 +658,7 @@ setup_rlimits(void)
     RLIM(FSIZE, (rlim_t)fsize_limit * 1024);
 
   RLIM(STACK, (stack_limit ? (rlim_t)stack_limit * 1024 : RLIM_INFINITY));
-  RLIM(NOFILE, 64);
+  RLIM(NOFILE, (fnumber_limit ? (rlim_t)fnumber_limit : 64));
   RLIM(MEMLOCK, 0);
 
   if (max_processes)
@@ -912,6 +913,7 @@ Options:\n\
 \t\t\t\ttmp\tCreate as a temporary directory (implies rw)\n\
 -D, --no-default-dirs\tDo not add default directory rules\n\
 -f, --fsize=<size>\tMax size (in KB) of files that can be created\n\
+-n, --fnumber=<count>\tMax number of file descriptors that can be opened\n\
 -E, --env=<var>\t\tInherit the environment variable <var> from the parent process\n\
 -E, --env=<var>=<val>\tSet the environment variable <var> to <val>; unset it if <var> is empty\n\
 -x, --extra-time=<time>\tSet extra timeout, before which a timing-out program is not yet killed,\n\
@@ -958,7 +960,7 @@ enum opt_code {
   OPT_TTY_HACK,
 };
 
-static const char short_opts[] = "b:c:d:DeE:f:i:k:m:M:o:p::q:r:st:vw:x:";
+static const char short_opts[] = "b:c:d:DeE:f:i:k:m:M:n:o:p::q:r:st:vw:x:";
 
 static const struct option long_opts[] = {
   { "box-id",		1, NULL, 'b' },
@@ -970,6 +972,7 @@ static const struct option long_opts[] = {
   { "dir",		1, NULL, 'd' },
   { "no-cg-timing",	0, NULL, OPT_NO_CG_TIMING },
   { "no-default-dirs",  0, NULL, 'D' },
+  { "fnumber",		1, NULL, 'n' },  
   { "fsize",		1, NULL, 'f' },
   { "env",		1, NULL, 'E' },
   { "extra-time",	1, NULL, 'x' },
@@ -1051,6 +1054,9 @@ main(int argc, char **argv)
       case 'k':
 	stack_limit = opt_uint(optarg);
 	break;
+	  case 'n':
+	fnumber_limit = opt_uint(optarg);
+	break;  
       case 'i':
 	redir_stdin = optarg;
 	break;

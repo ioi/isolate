@@ -82,6 +82,9 @@ OPTIONS
 	In most cases, it is better to restrict overall disk usage by a disk quota
 	(see below). This option can help in cases when quotas are not enabled
 	on the underlying filesystem.
+	
+*-n, --fnumber=*'count'::
+	Limit number of open file descriptors. Defaults to 64.
 
 *-q, --quota=*'blocks'*,*'inodes'::
 	Set disk quota to a given number of blocks and inodes. This requires the
