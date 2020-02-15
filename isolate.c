@@ -972,7 +972,7 @@ static const struct option long_opts[] = {
   { "dir",		1, NULL, 'd' },
   { "no-cg-timing",	0, NULL, OPT_NO_CG_TIMING },
   { "no-default-dirs",  0, NULL, 'D' },
-  { "fnumber",		1, NULL, 'n' },  
+  { "fnumber",		1, NULL, 'n' },
   { "fsize",		1, NULL, 'f' },
   { "env",		1, NULL, 'E' },
   { "extra-time",	1, NULL, 'x' },
@@ -1054,7 +1054,7 @@ main(int argc, char **argv)
       case 'k':
 	stack_limit = opt_uint(optarg);
 	break;
-	  case 'n':
+      case 'n':
 	fnumber_limit = opt_uint(optarg);
 	break;  
       case 'i':
