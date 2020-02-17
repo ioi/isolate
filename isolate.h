@@ -50,6 +50,8 @@ void __attribute__((format(printf,1,2))) meta_printf(const char *fmt, ...);
 int set_env_action(char *a0);
 char **setup_environment(void);
 
+void set_cap_ipc_lock(void);
+
 void init_dir_rules(void);
 int set_dir_action(char *arg);
 void apply_dir_rules(int with_defaults);

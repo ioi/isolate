@@ -350,6 +350,23 @@ set_cap_sys_admin(void)
 }
 
 void
+set_cap_ipc_lock(void)
+{
+  cap_t caps;
+  if (!(caps = cap_get_proc()))
+    die("Cannot get capabilities: %m");
+
+  cap_value_t cap_list[] = { CAP_IPC_LOCK };
+  if (cap_set_flag(caps, CAP_EFFECTIVE, 1, cap_list, CAP_SET) < 0)
+    die("Cannot modify capabilities");
+
+  if (cap_set_proc(caps) < 0)
+    die("Cannot set capabilities: %m");
+
+  cap_free(caps);
+}
+
+void
 apply_dir_rules(int with_defaults)
 {
   /*

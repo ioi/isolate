@@ -675,6 +675,9 @@ box_inside(char **args)
   setup_rlimits();
   setup_credentials();
   setup_fds();
+  
+  set_cap_ipc_lock();
+  
   char **env = setup_environment();
 
   if (set_cwd && chdir(set_cwd))
