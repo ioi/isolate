@@ -1,3 +1,8 @@
+This is a fork of [isolate](https://github.com/ioi/isolate) with the additional configuration options:
+
+* `n, --fnumber=<count>` — limits the number of open file descriptors (`ulimit -n`) to `<count>`. Defaults to 64.
+* `--capability=<capability>` — propagates the capability (sets it as an ambient one) to the process run. E.g., `--capability=cap_ipc_lock`
+
 isolate
 =======
 

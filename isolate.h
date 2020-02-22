@@ -7,6 +7,7 @@
 
 #include <stdarg.h>
 #include <stdint.h>
+#include <sys/capability.h>
 #include <sys/types.h>
 
 #define NONRET __attribute__((noreturn))
@@ -86,3 +87,9 @@ struct cf_per_box {
 void cf_parse(void);
 struct cf_per_box *cf_per_box(int box_id);
 struct cf_per_box *cf_current_box(void);
+
+/* capabilities.c */
+
+void add_capability(cap_value_t cap);
+void set_effective_capability(cap_value_t cap);
+void setup_capabilities(void);

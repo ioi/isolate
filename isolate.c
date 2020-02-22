@@ -15,6 +15,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/prctl.h>
+#include <sys/capability.h>
 #include <sys/mount.h>
 #include <sys/resource.h>
 #include <sys/signal.h>
@@ -670,13 +672,14 @@ setup_rlimits(void)
 static int
 box_inside(char **args)
 {
+  prctl(PR_SET_KEEPCAPS, 1, 0, 0, 0); // keep capabilities after switch to box uid
+
   cg_enter();
   setup_root();
   setup_rlimits();
   setup_credentials();
-  setup_fds();
-  
-  set_cap_ipc_lock();
+  setup_fds();  
+  setup_capabilities();
   
   char **env = setup_environment();
 
@@ -904,6 +907,7 @@ Options:\n\
     --cg-timing\t\tTime limits affects total run time of the control group\n\
 \t\t\t(this is turned on by default, use --no-cg-timing to turn off)\n\
 -c, --chdir=<dir>\tChange directory to <dir> before executing the program\n\
+    --capability=<cap>\tSet capability <cap> as effective for the program\n\
 -d, --dir=<dir>\t\tMake a directory <dir> visible inside the sandbox\n\
     --dir=<in>=<out>\tMake a directory <out> outside visible as <in> inside\n\
     --dir=<in>=\t\tDelete a previously defined directory rule (even a default one)\n\
@@ -953,6 +957,7 @@ enum opt_code {
   OPT_RUN,
   OPT_CLEANUP,
   OPT_VERSION,
+  OPT_CAPABILITY,
   OPT_CG,
   OPT_CG_MEM,
   OPT_CG_TIMING,
@@ -969,6 +974,7 @@ static const struct option long_opts[] = {
   { "box-id",		1, NULL, 'b' },
   { "chdir",		1, NULL, 'c' },
   { "cg",		0, NULL, OPT_CG },
+  { "capability",		1, NULL, OPT_CAPABILITY },  
   { "cg-mem",		1, NULL, OPT_CG_MEM },
   { "cg-timing",	0, NULL, OPT_CG_TIMING },
   { "cleanup",		0, NULL, OPT_CLEANUP },
@@ -1022,6 +1028,14 @@ main(int argc, char **argv)
   int require_cg = 0;
   char *sep;
   enum opt_code mode = 0;
+  int cap_code;
+  
+  add_capability(1);
+  add_capability(2);
+  add_capability(3);
+  setup_capabilities();
+  exit(0);
+  
 
   init_dir_rules();
 
@@ -1037,6 +1051,12 @@ main(int argc, char **argv)
       case OPT_CG:
 	cg_enable = 1;
 	break;
+	case OPT_CAPABILITY:
+	  if (cap_from_name(optarg, &cap_code) != 0) {
+	  	die("Unknown capability: %s\n", optarg);
+	  }
+	  add_capability(cap_code);
+	  break;
       case 'd':
 	if (!set_dir_action(optarg))
 	  usage("Invalid directory rule specified: %s\n", optarg);

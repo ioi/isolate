@@ -3,3 +3,4 @@ isolate
 isolate.1
 isolate.1.html
 *.o
+.DS_Store

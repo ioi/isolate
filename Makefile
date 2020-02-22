@@ -24,7 +24,7 @@ MANDIR = $(DATADIR)/man
 MAN1DIR = $(MANDIR)/man1
 BOXDIR = $(VARPREFIX)/lib/isolate
 
-isolate: isolate.o util.o rules.o cg.o config.o
+isolate: isolate.o util.o rules.o cg.o config.o capabilities.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 %.o: %.c isolate.h config.h
