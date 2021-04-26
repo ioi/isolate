@@ -116,7 +116,7 @@ chowntree(char *path, uid_t uid, gid_t gid)
 static int fd_to_keep = -1;
 
 void
-close_all_fds(void)
+close_all_fds(int num_exceptions, unsigned *exceptions)
 {
   /* Close all file descriptors except 0, 1, 2 */
 
@@ -134,7 +134,14 @@ close_all_fds(void)
 	continue;
       if (fd >= 0 && fd <= 2 || fd == dir_fd || fd == fd_to_keep)
 	continue;
-      close(fd);
+      int want_close = 1;
+      for (int i = 0; i < num_exceptions; i++)
+	{
+	  if (fd == exceptions[i])
+	    want_close = 0;
+	}
+      if (want_close)
+	close(fd);
     }
 
   closedir(dir);

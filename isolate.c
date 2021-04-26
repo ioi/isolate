@@ -80,6 +80,8 @@ static int redir_stderr_to_stdout;
 static char *set_cwd;
 static int share_net;
 static int inherit_fds;
+static int inherit_fd_num = 0;
+static unsigned inherit_fd_list[100];
 static int default_dirs = 1;
 static int tty_hack;
 
@@ -840,8 +842,10 @@ run(char **argv)
   if (!dir_exists("box"))
     die("Box directory not found, did you run `%s --init'?", self_name());
 
-  if (!inherit_fds)
-    close_all_fds();
+  if (inherit_fds == 0)
+    close_all_fds(0, NULL);
+  else if (inherit_fds == 2)
+    close_all_fds(inherit_fd_num, inherit_fd_list);
 
   chowntree("box", box_uid, box_gid);
   cleanup_ownership = 1;
@@ -917,7 +921,7 @@ Options:\n\
 -x, --extra-time=<time>\tSet extra timeout, before which a timing-out program is not yet killed,\n\
 \t\t\tso that its real execution time is reported (seconds, fractions allowed)\n\
 -e, --full-env\t\tInherit full environment of the parent process\n\
-    --inherit-fds\t\tInherit all file descriptors of the parent process\n\
+    --inherit-fds[=FD1,FD2,...]\t\tInherit specified file descriptors (or all file decriptors) from the parent process\n\
 -m, --mem=<size>\tLimit address space to <size> KB\n\
 -M, --meta=<file>\tOutput process information to <file> (name:value)\n\
 -q, --quota=<blk>,<ino>\tSet disk quota to <blk> blocks and <ino> inodes\n\
@@ -974,7 +978,7 @@ static const struct option long_opts[] = {
   { "env",		1, NULL, 'E' },
   { "extra-time",	1, NULL, 'x' },
   { "full-env",		0, NULL, 'e' },
-  { "inherit-fds",	0, NULL, OPT_INHERIT_FDS },
+  { "inherit-fds",	2, NULL, OPT_INHERIT_FDS },
   { "init",		0, NULL, OPT_INIT },
   { "mem",		1, NULL, 'm' },
   { "meta",		1, NULL, 'M' },
@@ -1122,7 +1126,32 @@ main(int argc, char **argv)
 	share_net = 1;
 	break;
       case OPT_INHERIT_FDS:
-	inherit_fds = 1;
+	if (optarg)
+	  {
+	    inherit_fds = 2;
+	    inherit_fd_num = 0;
+	    const char *fdstr = optarg;
+	    while (1)
+	      {
+		char *end = NULL;
+		unsigned long fd = strtoul(fdstr, &end, 10);
+		if (end == fdstr)
+		  die("Invalid number in --inherit-fds");
+		if (inherit_fd_num >= ARRAY_SIZE(inherit_fd_list) - 1)
+		  die("Too many fds in --inherit-fds");
+		inherit_fd_list[inherit_fd_num++] = fd;
+		if (*end == '\0')
+		  break;
+		else if (*end == ',')
+		  fdstr = end + 1;
+		else
+		  die("Invalid character in --inherit-fds list");
+	      }
+	  }
+	else
+	  {
+	    inherit_fds = 1;
+	  }
 	break;
       case OPT_STDERR_TO_STDOUT:
 	redir_stderr = NULL;
