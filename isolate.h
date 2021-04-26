@@ -39,7 +39,7 @@ int dir_exists(char *path);
 void rmtree(char *path);
 void make_dir(char *path);
 void chowntree(char *path, uid_t uid, gid_t gid);
-void close_all_fds(void);
+void close_all_fds(int num_exceptions, unsigned *exceptions);
 
 void meta_open(const char *name);
 void meta_close(void);
