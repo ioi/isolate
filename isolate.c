@@ -927,6 +927,7 @@ Options:\n\
     --share-net\t\tShare network namespace with the parent process\n\
 -s, --silent\t\tDo not print status messages except for fatal errors\n\
 -k, --stack=<size>\tLimit stack size to <size> KB (default: 0=unlimited)\n\
+-n, --open-files=<max>\tLimit number of open files <max> KB (default: 64)\n\
 -r, --stderr=<file>\tRedirect stderr to <file>\n\
     --stderr-to-stdout\tRedirect stderr to stdout\n\
 -i, --stdin=<file>\tRedirect stdin from <file>\n\
