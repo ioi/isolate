@@ -77,6 +77,10 @@ OPTIONS
 	Limit process stack to 'size' kilobytes. By default, the whole address
 	space is available for the stack, but it is subject to the *--mem* limit.
 
+*-n, --open-files=*'max'::
+	Limit number of open files to 'max'. The default value is 64. Setting this
+	option to 0 will result in unlimited open files.
+
 *-f, --fsize=*'size'::
 	Limit size of files created (or modified) by the program to 'size' kilobytes.
 	In most cases, it is better to restrict overall disk usage by a disk quota
