@@ -988,7 +988,7 @@ static const struct option long_opts[] = {
   { "share-net",	0, NULL, OPT_SHARE_NET },
   { "silent",		0, NULL, 's' },
   { "stack",		1, NULL, 'k' },
-  { "open-files",		1, NULL, 'n' },
+  { "open-files",	1, NULL, 'n' },
   { "stderr",		1, NULL, 'r' },
   { "stderr-to-stdout",	0, NULL, OPT_STDERR_TO_STDOUT },
   { "stdin",		1, NULL, 'i' },
