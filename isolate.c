@@ -72,6 +72,7 @@ static int silent;
 static int fsize_limit;
 static int memory_limit;
 static int stack_limit;
+static int open_file_limit = 64;
 int block_quota;
 int inode_quota;
 static int max_processes = 1;
@@ -656,8 +657,10 @@ setup_rlimits(void)
   if (fsize_limit)
     RLIM(FSIZE, (rlim_t)fsize_limit * 1024);
 
+  if (open_file_limit)
+    RLIM(NOFILE, (rlim_t)open_file_limit);
+
   RLIM(STACK, (stack_limit ? (rlim_t)stack_limit * 1024 : RLIM_INFINITY));
-  RLIM(NOFILE, 64);
   RLIM(MEMLOCK, 0);
 
   if (max_processes)
@@ -984,6 +987,7 @@ static const struct option long_opts[] = {
   { "share-net",	0, NULL, OPT_SHARE_NET },
   { "silent",		0, NULL, 's' },
   { "stack",		1, NULL, 'k' },
+  { "open-files",		1, NULL, 'n' },
   { "stderr",		1, NULL, 'r' },
   { "stderr-to-stdout",	0, NULL, OPT_STDERR_TO_STDOUT },
   { "stdin",		1, NULL, 'i' },
@@ -1050,6 +1054,9 @@ main(int argc, char **argv)
         break;
       case 'k':
 	stack_limit = opt_uint(optarg);
+	break;
+      case 'n':
+	open_file_limit = opt_uint(optarg);
 	break;
       case 'i':
 	redir_stdin = optarg;
