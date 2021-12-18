@@ -27,7 +27,7 @@ BOXDIR = $(VARPREFIX)/lib/isolate
 isolate: isolate.o util.o rules.o cg.o config.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
-%.o: %.c isolate.h config.h
+%.o: %.c isolate.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 isolate.o: CFLAGS += -DVERSION='"$(VERSION)"' -DYEAR='"$(YEAR)"' -DBUILD_DATE='"$(BUILD_DATE)"' -DBUILD_COMMIT='"$(BUILD_COMMIT)"'
