@@ -2,11 +2,14 @@
 # (c) 2015--2019 Martin Mares <mj@ucw.cz>
 # (c) 2017 Bernard Blackham <bernard@blackham.com.au>
 
-all: isolate isolate.1 isolate.1.html isolate-check-environment
+all: x isolate isolate.1 isolate.1.html isolate-check-environment
+
+SYSTEMD_CFLAGS:=$(shell pkg-config libsystemd --cflags)
+SYSTEMD_LIBS:=$(shell pkg-config libsystemd --libs)
 
 CC=gcc
-CFLAGS=-std=gnu99 -Wall -Wextra -Wno-parentheses -Wno-unused-result -Wno-missing-field-initializers -Wstrict-prototypes -Wmissing-prototypes -D_GNU_SOURCE
-LIBS=-lcap
+CFLAGS=-std=gnu99 -Wall -Wextra -Wno-parentheses -Wno-unused-result -Wno-missing-field-initializers -Wstrict-prototypes -Wmissing-prototypes -D_GNU_SOURCE $(SYSTEMD_CFLAGS)
+LIBS=-lcap $(SYSTEMD_LIBS)
 
 VERSION=1.8.1
 YEAR=2019
@@ -23,6 +26,9 @@ DATADIR = $(DATAROOTDIR)
 MANDIR = $(DATADIR)/man
 MAN1DIR = $(MANDIR)/man1
 BOXDIR = $(VARPREFIX)/lib/isolate
+
+x: x.o util.o
+	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 isolate: isolate.o util.o rules.o cg.o config.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
