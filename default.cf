@@ -5,12 +5,8 @@
 # must be writeable only to root.
 box_root = /var/local/lib/isolate
 
-# Root of the control group hierarchy
-cg_root = /sys/fs/cgroup
-
-# If the following variable is defined, the per-box cgroups
-# are created as sub-groups of the named cgroup
-#cg_parent = boxes
+# Control group under which we place our subgroups
+cg_root = /sys/fs/cgroup/isolate.slice/isolate.service
 
 # Block of UIDs and GIDs reserved for sandboxes
 first_uid = 60000
