@@ -1,0 +1,11 @@
+[Unit]
+Description=A trivial daemon to keep Isolate's control group hierarchy
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/isolate-cg-keeper
+Slice=isolate.slice
+Delegate=true
+
+[Install]
+WantedBy=multi-user.target
