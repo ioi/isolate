@@ -171,7 +171,7 @@ cg_init(void)
     return;
 
   if (!dir_exists(cf_cg_root))
-    die("Control group filesystem at %s not mounted", cf_cg_root);
+    die("Master control group %s does not exist", cf_cg_root);
 
   if (cf_cg_parent)
     {
