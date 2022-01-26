@@ -344,6 +344,10 @@ entering the chroot and running isolate. For example:
 
     mount --bind /path/to/chroot /path/to/chroot
 
+It is recommended to have +sys.fs.protected_hardlinks+ sysctl set to 1
+(which is probably default on modern Linux systems). Otherwise, the user running
+the sandbox could trick isolate to changing the owner of unrelated files.
+
 REPRODUCIBILITY
 ---------------
 
