@@ -921,7 +921,7 @@ Options:\n\
 -x, --extra-time=<time>\tSet extra timeout, before which a timing-out program is not yet killed,\n\
 \t\t\tso that its real execution time is reported (seconds, fractions allowed)\n\
 -e, --full-env\t\tInherit full environment of the parent process\n\
-    --inherit-fds\t\tInherit all file descriptors of the parent process\n\
+    --inherit-fds\tInherit all file descriptors of the parent process\n\
 -m, --mem=<size>\tLimit address space to <size> KB\n\
 -M, --meta=<file>\tOutput process information to <file> (name:value)\n\
 -n, --open-files=<max>\tLimit number of open files to <max> (default: 64, 0=unlimited)\n\
