@@ -680,7 +680,8 @@ box_inside(char **args)
     die("chdir: %m");
 
   execve(args[0], args, env);
-  die("execve(\"%s\"): %m", args[0]);
+  fprintf(stderr, "execve(\"%s\"): %m\n", args[0]);
+  exit(127);
 }
 
 /*** Proxy ***/
