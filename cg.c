@@ -238,8 +238,8 @@ cg_enter(void)
 
   if (cg_memory_limit)
     {
-      cg_write(CG_MEMORY, "memory.limit_in_bytes", "%lld\n", (long long) cg_memory_limit << 10);
       cg_write(CG_MEMORY, "?memory.memsw.limit_in_bytes", "%lld\n", (long long) cg_memory_limit << 10);
+      cg_write(CG_MEMORY, "memory.limit_in_bytes", "%lld\n", (long long) cg_memory_limit << 10);
       cg_write(CG_MEMORY, "memory.max_usage_in_bytes", "0\n");
       cg_write(CG_MEMORY, "?memory.memsw.max_usage_in_bytes", "0\n");
     }
