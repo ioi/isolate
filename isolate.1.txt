@@ -89,7 +89,8 @@ OPTIONS
 
 *-q, --quota=*'blocks'*,*'inodes'::
 	Set disk quota to a given number of blocks and inodes. This requires the
-	filesystem to be mounted with support for quotas. Please note that this
+	filesystem to be mounted with support for quotas. Unlike other options,
+	this one must be given to *isolate --init*. Please note that this
 	currently works only on the ext family of filesystems (other filesystems
 	use other interfaces for setting quotas).
 
