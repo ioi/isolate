@@ -696,6 +696,50 @@ setup_orig_credentials(void)
     die("setresuid: %m");
 }
 
+
+// Patch from https://github.com/ioi/isolate/issues/106
+/* https://bazel.googlesource.com/bazel/+/refs/changes/01/2101/5/src/main/tools/network-tools.c */
+#include <net/if.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+// see
+// http://stackoverflow.com/questions/5641427/how-to-make-preprocessor-generate-a-string-for-line-keyword
+#define S(x) #x
+#define S_(x) S(x)
+#define S__LINE__ S_(__LINE__)
+
+#define CHECK_CALL(x, ...)                                    \
+  if ((x) == -1) {                                            \
+    fprintf(stderr, __FILE__ ":" S__LINE__ ": " __VA_ARGS__); \
+    perror(#x);                                               \
+    exit(EXIT_FAILURE);                                       \
+  }
+
+void BringupInterface(const char *name) {
+  int fd;
+
+  struct ifreq ifr;
+
+  CHECK_CALL(fd = socket(AF_INET, SOCK_DGRAM, 0));
+
+  memset(&ifr, 0, sizeof(ifr));
+  strncpy(ifr.ifr_name, name, IF_NAMESIZE);
+
+  CHECK_CALL(ioctl(fd, SIOCGIFINDEX, &ifr));
+
+  // Enable the interface
+  ifr.ifr_flags |= IFF_UP;
+  CHECK_CALL(ioctl(fd, SIOCSIFFLAGS, &ifr));
+
+  CHECK_CALL(close(fd));
+}
+
 static int
 box_proxy(void *arg)
 {
@@ -706,6 +750,10 @@ box_proxy(void *arg)
   close(status_pipes[0]);
   meta_close();
   reset_signals();
+
+  if (!share_net) {
+    BringupInterface("lo");
+  }
 
   pid_t inside_pid = fork();
   if (inside_pid < 0)
