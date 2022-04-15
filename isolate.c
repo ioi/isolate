@@ -1,7 +1,7 @@
 /*
  *	A Process Isolator based on Linux Containers
  *
- *	(c) 2012-2020 Martin Mares <mj@ucw.cz>
+ *	(c) 2012-2022 Martin Mares <mj@ucw.cz>
  *	(c) 2012-2014 Bernard Blackham <bernard@blackham.com.au>
  */
 
@@ -15,9 +15,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <net/if.h>
 #include <sys/mount.h>
 #include <sys/resource.h>
 #include <sys/signal.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/time.h>
 #include <sys/vfs.h>
@@ -592,6 +594,27 @@ setup_root(void)
 }
 
 static void
+setup_net(void)
+{
+  if (share_net)
+    return;
+
+  int fd = socket(PF_INET, SOCK_DGRAM, 0);
+  if (fd < 0)
+    die("Cannot create PF_INET socket: %m");
+
+  struct ifreq ifr = { .ifr_name = "lo" };
+  if (ioctl(fd, SIOCGIFFLAGS, &ifr) < 0)
+    die("SIOCGIFFLAGS on 'lo' failed: %m");
+
+  ifr.ifr_flags |= IFF_UP;
+  if (ioctl(fd, SIOCSIFFLAGS, &ifr) < 0)
+    die("SIOCSIFFLAGS on 'lo' failed: %m");
+
+  close(fd);
+}
+
+static void
 setup_credentials(void)
 {
   if (setresgid(box_gid, box_gid, box_gid) < 0)
@@ -674,6 +697,7 @@ box_inside(char **args)
 {
   cg_enter();
   setup_root();
+  setup_net();
   setup_rlimits();
   setup_credentials();
   setup_fds();
