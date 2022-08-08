@@ -187,7 +187,7 @@ intel_boost_check
 
 # Check that general frequency boost is disabled
 general_boost_check() {
-    print_start_check "General frequency boost"
+    print_start_check "general frequency boost"
     local val
     if val=$(cat /sys/devices/system/cpu/cpufreq/boost 2>/dev/null) ; then
         if [ "$val" -ne 0 ] ; then
