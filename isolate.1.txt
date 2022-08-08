@@ -63,10 +63,10 @@ OPTIONS
 	sleeping programs.
 
 *-x, --extra-time=*'time'::
-	When a time limit is exceeded, wait for extra 'time' seconds before
-	killing the program. This has the advantage that the real execution time
-	is reported, even though it slightly exceeds the limit. Fractional
-	numbers are again allowed.
+	When the *--time* limit is exceeded, do not kill the program immediately,
+	but wait until *--extra-time* seconds elapse since the start of the program.
+	This allows to report the real execution time, even if it exceeds the limit
+	slightly. Fractional numbers are allowed.
 
 *-b, --box-id=*'id'::
 	When you run multiple sandboxes in parallel, you have to assign each unique
