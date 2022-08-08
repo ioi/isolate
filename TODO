@@ -1,5 +1,2 @@
 - Examine the use of taskstats for measuring memory
 - Make --inherit-fds accept a list of fd's to inherit
-- isolate-check-environment: check Turbo boost
-	/sys/devices/system/cpu/cpufreq/boost
-	/sys/devices/system/cpu/intel_pstate/no_turbo

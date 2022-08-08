@@ -3,6 +3,7 @@
 # Identifies potential sources issues when using isolate.
 #
 #     (c) 2017 Bernard Blackham <bernard@blackham.com.au>
+#     (c) 2022 Martin Mares <mj@ucw.cz>
 #
 
 usage() {
@@ -165,6 +166,42 @@ cpufreq_check() {
     print_finish
 }
 cpufreq_check
+
+# Check that Intel frequency boost is disabled
+intel_boost_check() {
+    print_start_check "Intel frequency boost"
+    local val
+    if val=$(cat /sys/devices/system/cpu/intel_pstate/no_turbo 2>/dev/null) ; then
+        if [ "$val" -ne 1 ] ; then
+            print_fail
+            action \
+                "frequency boosting is enabled." \
+                "echo 1 > /sys/devices/system/cpu/intel_pstate/no_turbo"
+        fi
+    else
+        print_skipped
+    fi
+    print_finish
+}
+intel_boost_check
+
+# Check that general frequency boost is disabled
+general_boost_check() {
+    print_start_check "General frequency boost"
+    local val
+    if val=$(cat /sys/devices/system/cpu/cpufreq/boost 2>/dev/null) ; then
+        if [ "$val" -ne 0 ] ; then
+            print_fail
+            action \
+                "frequency boosting is enabled." \
+                "echo 0 > /sys/devices/system/cpu/cpufreq/boost"
+        fi
+    else
+        print_skipped
+    fi
+    print_finish
+}
+general_boost_check
 
 # Check that address space layout randomisation is disabled.
 aslr_check() {
