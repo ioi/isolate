@@ -360,18 +360,15 @@ program isolate-check-environment.
 Address space randomization can affect timing, memory usage, and program
 behavior. This setting can be made persistent through /etc/sysctl.d/.
 
-* Disable dynamic CPU frequency scaling. This requires setting the cpufreq
-scaling governor to +performance+. The process for doing this varies between
-distributions.
+* Disable dynamic CPU frequency scaling. This is done by setting the cpufreq
+scaling governor in /sys/device/system/cpu/cpufreq/*/scaling_governor to +performance+.
+(On Intel CPUs, frequency scaling can be controlled by the `intel_pstate` driver,
+but it still provides its own +performance+ controller to the cpufreq subsystem.)
 
-* Consider disabling Turboboost on CPUs that might support it (most i3/i5/i7
-Intel CPUs). Approach this one with caution. Disabling a CPU that Turboboosts
-from 2.3 GHz to 2.6 GHz would have minimal impact on run-times in exchange
-for determinism, but the same on a CPU that Turboboosts from 1.6 GHz to 2.8
-GHz will incur a much more dramatic slowdown. Perhaps if the ambient
-temperature is controlled and only one single-threaded task is keeping the
-CPU busy at 100%, then TB's behaviour may be reasonably deterministic;
-requires further experimentation to confirm.
+* Consider disabling frequency boosting on CPUs that might support it (this
+includes most i3/i5/i7 Intel CPUs and the AMD Zen architecture). This is done
+either by writing 1 to /sys/devices/system/cpu/intel_pstate/no_turbo (on Intel CPUs)
+or by writing 0 to /sys/devices/system/cpu/cpufreq/boost (other machines).
 
 * Run evaluations on a single CPU (core). The Linux scheduler has a tendency to randomly
 migrate tasks between CPUs, incurring cache migration costs. You can use isolate's
