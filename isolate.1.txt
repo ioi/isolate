@@ -311,16 +311,10 @@ All other return codes signal an internal error.
 
 INSTALLATION
 ------------
-Isolate depends on several advanced features of the Linux kernel. Please
-make sure that your kernel supports
-PID namespaces (+CONFIG_PID_NS+),
-IPC namespaces (+CONFIG_IPC_NS+), and
-network namespaces (+CONFIG_NET_NS+).
-If you want to use control groups, you need
-the cpusets (+CONFIG_CPUSETS+),
-CPU accounting controller (+CONFIG_CGROUP_CPUACCT+), and
-memory resource controller (+CONFIG_MEMCG+). If your machine has swap enabled,
-you should also enable the swap controller (+CONFIG_MEMCG_SWAP+).
+Isolate depends on several advanced features of the Linux kernel, like different
+kinds of namespaces and control groups. These features are available in kernels
+of most Linux distributions now, but if you are building your own kernel, you
+have to be careful.
 
 Debian 7.x and newer require enabling the memory and swap cgroup controllers by
 adding the parameters "cgroup_enable=memory swapaccount=1" to the kernel
@@ -336,6 +330,11 @@ Before you run isolate with control groups, you need to ensure that the cgroup
 filesystem is enabled and mounted.  Most modern Linux distributions already
 provide cgroup support through a tmpfs mounted at /sys/fs/cgroup, with
 individual controllers mounted within subdirectories.
+
+Beware that Isolate does not support cgroup v2 yet, which is used by default by
+recent versions of systemd. If this is your case, you need to add
++systemd.unified_cgroup_hierarchy=false systemd.legacy_systemd_cgroup_controller=false+
+to kernel parameters.
 
 Isolate expects that the root directory "/" is a mount point. When running
 isolate inside a chroot, this may not be the case, and isolate may fail with
