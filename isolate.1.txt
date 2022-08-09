@@ -382,6 +382,8 @@ and /sys/kernel/mm/transparent_hugepage/defrag should be set to "madvise" or "ne
 make sure that you have the memsw controller enabled, so that swap space is
 properly accounted for.
 
+See further suggestions in the https://ioi.github.io/checklist/[IOI Technical Checklist].
+
 LICENSE
 -------
 Isolate was written by Martin Mares and Bernard Blackham.
