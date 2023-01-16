@@ -259,22 +259,23 @@ cg_stats(void)
   if (!cg_enable)
     return;
 
+  char buf[CG_BUFSIZE];
   char key[CG_BUFSIZE], val[CG_BUFSIZE];
 
-#if 0	// FIXME: I see no way how to ask for maximum memory usage
   // Memory usage statistics
   unsigned long long mem=0, memsw=0;
-  if (cg_read(CG_MEMORY, "?memory.max_usage_in_bytes", buf))
+  if (cg_read("?memory.peak", buf))
     mem = atoll(buf);
-  if (cg_read(CG_MEMORY, "?memory.memsw.max_usage_in_bytes", buf))
+#if 0	// FIXME: I see no way how to ask for maximum swap memory usage
+  if (cg_read("?memory.memsw.max_usage_in_bytes", buf))
     {
       memsw = atoll(buf);
       if (memsw > mem)
 	mem = memsw;
     }
+#endif
   if (mem)
     meta_printf("cg-mem:%lld\n", mem >> 10);
-#endif
 
   // OOM kill detection
   FILE *f = cg_fopen("memory.events");
