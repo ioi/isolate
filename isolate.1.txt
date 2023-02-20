@@ -139,6 +139,10 @@ The following options can limit system resources consumed by the program.
 	use other interfaces for setting quotas).
 	If the quota is reached, system calls expanding files fail with error EDQUOT.
 
+*--core=*'size'::
+	Limit size of core files created when a process crashes to 'size' kilobytes.
+	Defaults to zero, meaning that no core files are produced inside the sandbox.
+
 *-p, --processes*[*=*'max']::
 	Permit the program to create up to 'max' processes and/or threads. Please
 	keep in mind that time and memory limit do not work with multiple processes

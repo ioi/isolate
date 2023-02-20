@@ -75,6 +75,7 @@ static int fsize_limit;
 static int memory_limit;
 static int stack_limit;
 static int open_file_limit = 64;
+static int core_limit;
 int block_quota;
 int inode_quota;
 static int max_processes = 1;
@@ -685,6 +686,7 @@ setup_rlimits(void)
 
   RLIM(STACK, (stack_limit ? (rlim_t)stack_limit * 1024 : RLIM_INFINITY));
   RLIM(MEMLOCK, 0);
+  RLIM(CORE, (rlim_t)core_limit * 1024);
 
   if (max_processes)
     RLIM(NPROC, max_processes);
@@ -928,6 +930,7 @@ Options:\n\
     --cg-timing\t\tTime limits affects total run time of the control group\n\
 \t\t\t(this is turned on by default, use --no-cg-timing to turn off)\n\
 -c, --chdir=<dir>\tChange directory to <dir> before executing the program\n\
+    --core=<size>\tLimit core files to <size> KB (default: 0)\n\
 -d, --dir=<dir>\t\tMake a directory <dir> visible inside the sandbox\n\
     --dir=<in>=<out>\tMake a directory <out> outside visible as <in> inside\n\
     --dir=<in>=\t\tDelete a previously defined directory rule (even a default one)\n\
@@ -985,6 +988,7 @@ enum opt_code {
   OPT_INHERIT_FDS,
   OPT_STDERR_TO_STDOUT,
   OPT_TTY_HACK,
+  OPT_CORE,
 };
 
 static const char short_opts[] = "b:c:d:DeE:f:i:k:m:M:o:p::q:r:st:vw:x:";
@@ -996,6 +1000,7 @@ static const struct option long_opts[] = {
   { "cg-mem",		1, NULL, OPT_CG_MEM },
   { "cg-timing",	0, NULL, OPT_CG_TIMING },
   { "cleanup",		0, NULL, OPT_CLEANUP },
+  { "core",		1, NULL, OPT_CORE },
   { "dir",		1, NULL, 'd' },
   { "no-cg-timing",	0, NULL, OPT_NO_CG_TIMING },
   { "no-default-dirs",  0, NULL, 'D' },
@@ -1163,6 +1168,9 @@ main(int argc, char **argv)
 	break;
       case OPT_TTY_HACK:
 	tty_hack = 1;
+	break;
+      case OPT_CORE:
+	core_limit = opt_uint(optarg);
 	break;
       default:
 	usage(NULL);
