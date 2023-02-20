@@ -89,11 +89,13 @@ The following options can limit system resources consumed by the program.
 
 *-m, --mem=*'size'::
 	Limit address space of the program to 'size' kilobytes. If more processes
-	are allowed, this applies to each of them separately.
+	are allowed, this applies to each of them separately. If this limit is reached,
+	further memory allocations fail (e.g., malloc returns NULL).
 
 *-t, --time=*'time'::
 	Limit run time of the program to 'time' seconds. Fractional numbers are allowed.
-	Time in which the OS assigns the processor to different tasks is not counted.
+	Time in which the OS assigns the processor to other tasks is not counted.
+	If this limit is exceeded, the program is killed (after *--extra-time*, if set).
 
 *-w, --wall-time=*'time'::
 	Limit wall-clock time to 'time' seconds. Fractional values are allowed.
@@ -102,6 +104,7 @@ The following options can limit system resources consumed by the program.
 	for an external event. We recommend to use *--time* as the main limit,
 	but set *--wall-time* to a much higher value as a precaution against
 	sleeping programs.
+	If this limit is exceeded, the program is killed.
 
 *-x, --extra-time=*'time'::
 	When the *--time* limit is exceeded, do not kill the program immediately,
@@ -112,16 +115,21 @@ The following options can limit system resources consumed by the program.
 *-k, --stack=*'size'::
 	Limit process stack to 'size' kilobytes. By default, the whole address
 	space is available for the stack, but it is subject to the *--mem* limit.
+	If this limit is exceeded, the program receives the SIGSEGV signal.
 
 *-n, --open-files=*'max'::
 	Limit number of open files to 'max'. The default value is 64. Setting this
 	option to 0 will result in unlimited open files.
+	If this limit is reached, system calls creating file descriptors fail
+	with error EMFILE.
 
 *-f, --fsize=*'size'::
-	Limit size of files created (or modified) by the program to 'size' kilobytes.
+	Limit size of each file created (or modified) by the program to 'size' kilobytes.
 	In most cases, it is better to restrict overall disk usage by a disk quota
 	(see below). This option can help in cases when quotas are not enabled
 	on the underlying filesystem.
+	If this limit is reached, system calls expanding files fail with error
+	EFBIG and the program receives the SIGXFSZ signal.
 
 *-q, --quota=*'blocks'*,*'inodes'::
 	Set disk quota to a given number of blocks and inodes. This requires the
@@ -129,12 +137,15 @@ The following options can limit system resources consumed by the program.
 	this one must be given to *isolate --init*. Please note that this
 	currently works only on the ext family of filesystems (other filesystems
 	use other interfaces for setting quotas).
+	If the quota is reached, system calls expanding files fail with error EDQUOT.
 
 *-p, --processes*[*=*'max']::
 	Permit the program to create up to 'max' processes and/or threads. Please
 	keep in mind that time and memory limit do not work with multiple processes
 	unless you enable the control group mode. If 'max' is not given, an arbitrary
 	number of processes can be run. By default, only one process is permitted.
+	If this limit is exceeded, system calls creating processes fail with error
+	EAGAIN.
 
 ENVIRONMENT RULES
 -----------------
@@ -233,6 +244,11 @@ section.
 *--cg-mem=*'size'::
 	Limit total memory usage by the whole control group to 'size' kilobytes.
 	This should be specified with *--run*.
+	Effect of reaching this limit depends on circumstances.
+	If it happens during memory allocation, the allocation can fail or memory
+	can be over-committed by the kernel.
+	If it happens when handling a page fault, the whole process is killed
+	by the OOM killer with the SIGSEGV signal.
 
 *--cg-timing*::
 	Use control groups for timing, so that the *--time* switch affects the
@@ -358,7 +374,6 @@ the sandbox could trick isolate to changing the owner of unrelated files.
 
 REPRODUCIBILITY
 ---------------
-
 The reproducibility of results can be improved by tuning some kernel
 parameters, listed below. Some of these parameters can be checked using the
 program isolate-check-environment.
