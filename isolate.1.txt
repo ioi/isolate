@@ -40,59 +40,16 @@ Please note that by default, the program is not allowed to start multiple
 processes of threads. If you need that, turn on the control group mode
 (see below).
 
-OPTIONS
--------
-*-M, --meta=*'file'::
-	Output meta-data on the execution of the program to a given file.
-	See below for syntax of the meta-files.
-
-*-m, --mem=*'size'::
-	Limit address space of the program to 'size' kilobytes. If more processes
-	are allowed, this applies to each of them separately.
-
-*-t, --time=*'time'::
-	Limit run time of the program to 'time' seconds. Fractional numbers are allowed.
-	Time in which the OS assigns the processor to different tasks is not counted.
-
-*-w, --wall-time=*'time'::
-	Limit wall-clock time to 'time' seconds. Fractional values are allowed.
-	This clock measures the time from the start of the program to its exit,
-	so it does not stop when the program has lost the CPU or when it is waiting
-	for an external event. We recommend to use *--time* as the main limit,
-	but set *--wall-time* to a much higher value as a precaution against
-	sleeping programs.
-
-*-x, --extra-time=*'time'::
-	When the *--time* limit is exceeded, do not kill the program immediately,
-	but wait until *--extra-time* seconds elapse since the start of the program.
-	This allows to report the real execution time, even if it exceeds the limit
-	slightly. Fractional numbers are allowed.
-
+BASIC OPTIONS
+-------------
 *-b, --box-id=*'id'::
 	When you run multiple sandboxes in parallel, you have to assign each unique
 	IDs to them by this option. See the discussion on UIDs in the INSTALLATION
 	section. The ID defaults to 0.
 
-*-k, --stack=*'size'::
-	Limit process stack to 'size' kilobytes. By default, the whole address
-	space is available for the stack, but it is subject to the *--mem* limit.
-
-*-n, --open-files=*'max'::
-	Limit number of open files to 'max'. The default value is 64. Setting this
-	option to 0 will result in unlimited open files.
-
-*-f, --fsize=*'size'::
-	Limit size of files created (or modified) by the program to 'size' kilobytes.
-	In most cases, it is better to restrict overall disk usage by a disk quota
-	(see below). This option can help in cases when quotas are not enabled
-	on the underlying filesystem.
-
-*-q, --quota=*'blocks'*,*'inodes'::
-	Set disk quota to a given number of blocks and inodes. This requires the
-	filesystem to be mounted with support for quotas. Unlike other options,
-	this one must be given to *isolate --init*. Please note that this
-	currently works only on the ext family of filesystems (other filesystems
-	use other interfaces for setting quotas).
+*-M, --meta=*'file'::
+	Output meta-data on the execution of the program to a given file.
+	See below for syntax of the meta-files.
 
 *-i, --stdin=*'file'::
 	Redirect standard input from 'file'. The 'file' has to be accessible
@@ -117,26 +74,6 @@ OPTIONS
 	Change directory to 'dir' before executing the program. This path must be
 	relative to the root of the sandbox.
 
-*-p, --processes*[*=*'max']::
-	Permit the program to create up to 'max' processes and/or threads. Please
-	keep in mind that time and memory limit do not work with multiple processes
-	unless you enable the control group mode. If 'max' is not given, an arbitrary
-	number of processes can be run. By default, only one process is permitted.
-
-*--share-net*::
-	By default, isolate creates a new network namespace for its child process.
-	This namespace contains no network devices except for a per-namespace loopback.
-	This prevents the program from communicating with the outside world. If you want
-	to permit communication, you can use this switch to keep the child process
-	in parent's network namespace.
-
-*--inherit-fds*::
-	By default, isolate closes all file descriptors passed from its parent
-	except for descriptors 0, 1, and 2.
-	This prevents unintentional descriptor leaks. In some cases, passing extra
-	descriptors to the sandbox can be desirable, so you can use this switch
-	to make them survive.
-
 *-v, --verbose*::
 	Tell the sandbox manager to be verbose and report on what is going on.
 	Using *-v* multiple times produces even more jabber.
@@ -146,14 +83,58 @@ OPTIONS
 	to stderr except for fatal errors of the sandbox itself. The combination of
 	*--verbose* and *--silent* has an undefined effect.
 
-*--tty-hack*::
-	Try to handle interactive programs communicating over a tty.
-	The sandboxed program will run in a separate process group, which will temporarily
-	become the foreground process group of the terminal. When the program exits, the
-	process group will be switched back to the caller. Please note that the program
-	can do many nasty things including (but not limited to) changing terminal settings,
-	changing the line discipline, and stuffing characters to the terminal's input queue
-	using the TIOCSTI ioctl. Use with extreme caution.
+LIMITS
+------
+The following options can limit system resources consumed by the program.
+
+*-m, --mem=*'size'::
+	Limit address space of the program to 'size' kilobytes. If more processes
+	are allowed, this applies to each of them separately.
+
+*-t, --time=*'time'::
+	Limit run time of the program to 'time' seconds. Fractional numbers are allowed.
+	Time in which the OS assigns the processor to different tasks is not counted.
+
+*-w, --wall-time=*'time'::
+	Limit wall-clock time to 'time' seconds. Fractional values are allowed.
+	This clock measures the time from the start of the program to its exit,
+	so it does not stop when the program has lost the CPU or when it is waiting
+	for an external event. We recommend to use *--time* as the main limit,
+	but set *--wall-time* to a much higher value as a precaution against
+	sleeping programs.
+
+*-x, --extra-time=*'time'::
+	When the *--time* limit is exceeded, do not kill the program immediately,
+	but wait until *--extra-time* seconds elapse since the start of the program.
+	This allows to report the real execution time, even if it exceeds the limit
+	slightly. Fractional numbers are allowed.
+
+*-k, --stack=*'size'::
+	Limit process stack to 'size' kilobytes. By default, the whole address
+	space is available for the stack, but it is subject to the *--mem* limit.
+
+*-n, --open-files=*'max'::
+	Limit number of open files to 'max'. The default value is 64. Setting this
+	option to 0 will result in unlimited open files.
+
+*-f, --fsize=*'size'::
+	Limit size of files created (or modified) by the program to 'size' kilobytes.
+	In most cases, it is better to restrict overall disk usage by a disk quota
+	(see below). This option can help in cases when quotas are not enabled
+	on the underlying filesystem.
+
+*-q, --quota=*'blocks'*,*'inodes'::
+	Set disk quota to a given number of blocks and inodes. This requires the
+	filesystem to be mounted with support for quotas. Unlike other options,
+	this one must be given to *isolate --init*. Please note that this
+	currently works only on the ext family of filesystems (other filesystems
+	use other interfaces for setting quotas).
+
+*-p, --processes*[*=*'max']::
+	Permit the program to create up to 'max' processes and/or threads. Please
+	keep in mind that time and memory limit do not work with multiple processes
+	unless you enable the control group mode. If 'max' is not given, an arbitrary
+	number of processes can be run. By default, only one process is permitted.
 
 ENVIRONMENT RULES
 -----------------
@@ -258,6 +239,33 @@ section.
 	total run time of all processes and threads in the control group.
 	This should be specified with *--run*.
 	This option is turned on by default, use *--no-cg-timing* to turn off.
+
+SPECIAL OPTIONS
+---------------
+The following options can be useful in special cases.
+
+*--share-net*::
+	By default, isolate creates a new network namespace for its child process.
+	This namespace contains no network devices except for a per-namespace loopback.
+	This prevents the program from communicating with the outside world. If you want
+	to permit communication, you can use this switch to keep the child process
+	in parent's network namespace.
+
+*--inherit-fds*::
+	By default, isolate closes all file descriptors passed from its parent
+	except for descriptors 0, 1, and 2.
+	This prevents unintentional descriptor leaks. In some cases, passing extra
+	descriptors to the sandbox can be desirable, so you can use this switch
+	to make them survive.
+
+*--tty-hack*::
+	Try to handle interactive programs communicating over a tty.
+	The sandboxed program will run in a separate process group, which will temporarily
+	become the foreground process group of the terminal. When the program exits, the
+	process group will be switched back to the caller. Please note that the program
+	can do many nasty things including (but not limited to) changing terminal settings,
+	changing the line discipline, and stuffing characters to the terminal's input queue
+	using the TIOCSTI ioctl. Use with extreme caution.
 
 META-FILES
 ----------
