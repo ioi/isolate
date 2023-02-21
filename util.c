@@ -11,7 +11,6 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -97,6 +96,7 @@ struct walk_context {
     // Used by our callbacks
     uid_t chown_uid;
     gid_t chown_gid;
+    bool keep_special_files;
 };
 
 static void
@@ -188,16 +188,25 @@ rmtree(char *path)
 static void
 chowntree_helper(struct walk_context *ctx)
 {
-  if (fchownat(ctx->dir_fd, ctx->name, ctx->chown_uid, ctx->chown_gid, AT_SYMLINK_NOFOLLOW) < 0)
-    die("Cannot chown %s: %m", ctx->name);
+  if (S_ISREG(ctx->st.st_mode) || S_ISDIR(ctx->st.st_mode) || ctx->keep_special_files)
+    {
+      if (fchownat(ctx->dir_fd, ctx->name, ctx->chown_uid, ctx->chown_gid, AT_SYMLINK_NOFOLLOW) < 0)
+	die("Cannot chown %s: %m", ctx->name);
+    }
+  else
+    {
+      if (unlinkat(ctx->dir_fd, ctx->name, 0) < 0)
+	die("Cannot unlink special file %s: %m", ctx->name);
+    }
 }
 
 void
-chowntree(char *path, uid_t uid, gid_t gid)
+chowntree(char *path, uid_t uid, gid_t gid, bool keep_special_files)
 {
   struct walk_context ctx = {
       .chown_uid = uid,
       .chown_gid = gid,
+      .keep_special_files = keep_special_files,
   };
   walktree(&ctx, path, chowntree_helper);
 }

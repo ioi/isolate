@@ -1,7 +1,7 @@
 /*
  *	A Process Isolator based on Linux Containers
  *
- *	(c) 2012-2022 Martin Mares <mj@ucw.cz>
+ *	(c) 2012-2023 Martin Mares <mj@ucw.cz>
  *	(c) 2012-2014 Bernard Blackham <bernard@blackham.com.au>
  */
 
@@ -86,6 +86,7 @@ static int share_net;
 static int inherit_fds;
 static int default_dirs = 1;
 static int tty_hack;
+static bool special_files;
 
 int cg_enable;
 int cg_memory_limit;
@@ -189,7 +190,7 @@ box_exit(int rc)
     }
 
   if (rc < 2 && cleanup_ownership)
-    chowntree("box", orig_uid, orig_gid);
+    chowntree("box", orig_uid, orig_gid, special_files);
 
   meta_close();
   exit(rc);
@@ -873,7 +874,7 @@ run(char **argv)
   if (!inherit_fds)
     close_all_fds();
 
-  chowntree("box", box_uid, box_gid);
+  chowntree("box", box_uid, box_gid, false);
   cleanup_ownership = 1;
 
   setup_pipe(error_pipes, 1);
@@ -935,7 +936,7 @@ Options:\n\
     --dir=<in>=<out>\tMake a directory <out> outside visible as <in> inside\n\
     --dir=<in>=\t\tDelete a previously defined directory rule (even a default one)\n\
     --dir=...:<opt>\tSpecify options for a rule:\n\
-\t\t\t\tdev\tAllow access to special files\n\
+\t\t\t\tdev\tAllow access to block/char devices\n\
 \t\t\t\tfs\tMount a filesystem (e.g., --dir=/proc:proc:fs)\n\
 \t\t\t\tmaybe\tSkip the rule if <out> does not exist\n\
 \t\t\t\tnoexec\tDo not allow execution of binaries\n\
@@ -955,6 +956,7 @@ Options:\n\
 -q, --quota=<blk>,<ino>\tSet disk quota to <blk> blocks and <ino> inodes\n\
     --share-net\t\tShare network namespace with the parent process\n\
 -s, --silent\t\tDo not print status messages except for fatal errors\n\
+    --special-files\tKeep non-regular files (symlinks etc.) produced inside sandbox\n\
 -k, --stack=<size>\tLimit stack size to <size> KB (default: 0=unlimited)\n\
 -r, --stderr=<file>\tRedirect stderr to <file>\n\
     --stderr-to-stdout\tRedirect stderr to stdout\n\
@@ -989,6 +991,7 @@ enum opt_code {
   OPT_STDERR_TO_STDOUT,
   OPT_TTY_HACK,
   OPT_CORE,
+  OPT_SPECIAL_FILES,
 };
 
 static const char short_opts[] = "b:c:d:DeE:f:i:k:m:M:o:p::q:r:st:vw:x:";
@@ -1019,6 +1022,7 @@ static const struct option long_opts[] = {
   { "silent",		0, NULL, 's' },
   { "stack",		1, NULL, 'k' },
   { "open-files",	1, NULL, 'n' },
+  { "special-files",	0, NULL, OPT_SPECIAL_FILES },
   { "stderr",		1, NULL, 'r' },
   { "stderr-to-stdout",	0, NULL, OPT_STDERR_TO_STDOUT },
   { "stdin",		1, NULL, 'i' },
@@ -1171,6 +1175,9 @@ main(int argc, char **argv)
 	break;
       case OPT_CORE:
 	core_limit = opt_uint(optarg);
+	break;
+      case OPT_SPECIAL_FILES:
+	special_files = true;
 	break;
       default:
 	usage(NULL);
