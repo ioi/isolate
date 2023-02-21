@@ -53,17 +53,20 @@ BASIC OPTIONS
 
 *-i, --stdin=*'file'::
 	Redirect standard input from 'file'. The 'file' has to be accessible
-	inside the sandbox. Otherwise, standard input is inherited from the
+	inside the sandbox (which means that the sandboxed program can manipulate
+	it arbitrarily). If not specified, standard input is inherited from the
 	parent process.
 
 *-o, --stdout=*'file'::
 	Redirect standard output to 'file'. The 'file' has to be accessible
-	inside the sandbox. Otherwise, standard output is inherited from the
+	inside the sandbox (which means that the sandboxed program can manipulate
+	it arbitrarily). If not specified, standard output is inherited from the
 	parent process and the sandbox manager does not write anything to it.
 
 *-r, --stderr=*'file'::
 	Redirect standard error output to 'file'. The 'file' has to be accessible
-	inside the sandbox. Otherwise, standard error output is inherited from the
+	inside the sandbox (which means that the sandboxed program can manipulate
+	it arbitrarily). If not specified, standard error output is inherited from the
 	parent process. See also *--stderr-to-stdout*.
 
 *--stderr-to-stdout*::
@@ -286,6 +289,11 @@ The following options can be useful in special cases.
 	can do many nasty things including (but not limited to) changing terminal settings,
 	changing the line discipline, and stuffing characters to the terminal's input queue
 	using the TIOCSTI ioctl. Use with extreme caution.
+
+*--special-files*::
+	By default, Isolate removes all special files (other than regular files
+	and directories) created inside the sandbox. If you need them, this option disables
+	that behavior, but you need to carefully check what you open.
 
 META-FILES
 ----------
