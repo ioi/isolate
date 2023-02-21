@@ -31,7 +31,6 @@ cg_makepath(char *buf, size_t len, const char *attr)
   assert((size_t) out < len);
 }
 
-// FIXME: Unused yet
 static int
 cg_read(const char *attr, char *buf)
 {
@@ -261,20 +260,11 @@ cg_stats(void)
 
   char key[CG_BUFSIZE], val[CG_BUFSIZE];
 
-#if 0	// FIXME: I see no way how to ask for maximum memory usage
-  // Memory usage statistics
-  unsigned long long mem=0, memsw=0;
-  if (cg_read(CG_MEMORY, "?memory.max_usage_in_bytes", buf))
-    mem = atoll(buf);
-  if (cg_read(CG_MEMORY, "?memory.memsw.max_usage_in_bytes", buf))
-    {
-      memsw = atoll(buf);
-      if (memsw > mem)
-	mem = memsw;
-    }
+  unsigned long long mem=0;
+  if (cg_read("?memory.peak", val))
+    mem = atoll(val);
   if (mem)
     meta_printf("cg-mem:%lld\n", mem >> 10);
-#endif
 
   // OOM kill detection
   FILE *f = cg_fopen("memory.events");
