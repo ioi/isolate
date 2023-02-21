@@ -83,94 +83,123 @@ make_dir(char *path)
  *  fstatat() and similar functions.
  */
 
+struct walk_context {
+    // Current item
+    int dir_fd;
+    const char *name;
+    bool is_dir;
+    struct stat st;
+
+    // Common for the whole walk
+    dev_t root_dev;
+    void (*callback)(struct walk_context *ctx);
+
+    // Used by our callbacks
+    uid_t chown_uid;
+    gid_t chown_gid;
+};
+
 static void
-walktree_fd(int dir_fd, dev_t root_dev, void (*callback)(int dir_fd, const char *name, bool is_dir))
+walktree_ctx(struct walk_context *ctx)
 {
-  DIR *dir = fdopendir(dir_fd);
+  DIR *dir = fdopendir(ctx->dir_fd);
   if (!dir)
     die("fdopendir failed: %m");
 
   struct dirent *de;
   while (de = readdir(dir))
     {
-      if (!strcmp(de->d_name, ".") || !strcmp(de->d_name, ".."))
+      ctx->name = de->d_name;
+
+      if (!strcmp(ctx->name, ".") || !strcmp(ctx->name, ".."))
 	continue;
 
-      struct stat st;
-      if (fstatat(dir_fd, de->d_name, &st, AT_SYMLINK_NOFOLLOW) < 0)
-	die("Cannot stat %s: %m", de->d_name);
+      if (fstatat(ctx->dir_fd, ctx->name, &ctx->st, AT_SYMLINK_NOFOLLOW) < 0)
+	die("Cannot stat %s: %m", ctx->name);
 
-      if (st.st_dev != root_dev)
-	die("Unexpected mountpoint: %s", de->d_name);
+      if (ctx->st.st_dev != ctx->root_dev)
+	die("Unexpected mountpoint: %s", ctx->name);
 
-      if (S_ISDIR(st.st_mode))
+      if (S_ISDIR(ctx->st.st_mode))
 	{
-	  int fd = openat(dir_fd, de->d_name, O_RDONLY | O_DIRECTORY | O_NOFOLLOW);
-	  if (fd < 0)
-	    die("Cannot open directory %s: %m", de->d_name);
-	  walktree_fd(fd, root_dev, callback);;
-	  callback(dir_fd, de->d_name, 1);
+	  struct walk_context subdir = *ctx;
+	  subdir.dir_fd = openat(ctx->dir_fd, ctx->name, O_RDONLY | O_DIRECTORY | O_NOFOLLOW);
+	  if (subdir.dir_fd < 0)
+	    die("Cannot open directory %s: %m", ctx->name);
+	  walktree_ctx(&subdir);
+	  ctx->is_dir = true;
+	  ctx->callback(ctx);
 	}
       else
-	callback(dir_fd, de->d_name, 0);
+	{
+	  ctx->is_dir = false;
+	  ctx->callback(ctx);
+	}
     }
 
   closedir(dir);
 }
 
 static void
-walktree(const char *path, void (*callback)(int dir_fd, const char *name, bool is_dir))
+walktree(struct walk_context *ctx, const char *path, void (*callback)(struct walk_context *ctx))
 {
-  int fd = open(path, O_RDONLY | O_DIRECTORY);
-  if (fd < 0)
+  ctx->callback = callback;
+  ctx->dir_fd = AT_FDCWD;
+  ctx->name = path;
+
+  struct walk_context top = *ctx;
+  top.dir_fd = open(path, O_RDONLY | O_DIRECTORY);
+  if (top.dir_fd < 0)
     die("Cannot open directory %s: %m", path);
 
-  struct stat st;
-  if (fstat(fd, &st) < 0)
+  if (fstat(top.dir_fd, &ctx->st) < 0)
     die("Cannot stat %s: %m", path);
-  assert(S_ISDIR(st.st_mode));
+  assert(S_ISDIR(ctx->st.st_mode));
+  top.root_dev = ctx->st.st_dev;
 
-  walktree_fd(fd, st.st_dev, callback);
-  callback(AT_FDCWD, path, 1);
+  walktree_ctx(&top);
+
+  ctx->is_dir = true;
+  ctx->callback(ctx);
 }
 
 static void
-rmtree_helper(int dir_fd, const char *name, bool is_dir)
+rmtree_helper(struct walk_context *ctx)
 {
-  if (is_dir)
+  if (ctx->is_dir)
     {
-      if (unlinkat(dir_fd, name, AT_REMOVEDIR) < 0)
-	die("Cannot rmdir %s: %m", name);
+      if (unlinkat(ctx->dir_fd, ctx->name, AT_REMOVEDIR) < 0)
+	die("Cannot rmdir %s: %m", ctx->name);
     }
   else
     {
-      if (unlinkat(dir_fd, name, 0) < 0)
-	die("Cannot unlink %s: %m", name);
+      if (unlinkat(ctx->dir_fd, ctx->name, 0) < 0)
+	die("Cannot unlink %s: %m", ctx->name);
     }
 }
 
 void
 rmtree(char *path)
 {
-  walktree(path, rmtree_helper);
+  struct walk_context ctx = { };
+  walktree(&ctx, path, rmtree_helper);
 }
 
-static uid_t chown_uid;
-static gid_t chown_gid;
-
 static void
-chowntree_helper(int dir_fd, const char *name, bool is_dir UNUSED)
+chowntree_helper(struct walk_context *ctx)
 {
-  if (fchownat(dir_fd, name, chown_uid, chown_gid, AT_SYMLINK_NOFOLLOW) < 0)
-    die("Cannot chown %s: %m", name);
+  if (fchownat(ctx->dir_fd, ctx->name, ctx->chown_uid, ctx->chown_gid, AT_SYMLINK_NOFOLLOW) < 0)
+    die("Cannot chown %s: %m", ctx->name);
 }
 
 void
 chowntree(char *path, uid_t uid, gid_t gid)
 {
-  chown_uid = uid;
-  chown_gid = gid;
-  walktree(path, chowntree_helper);
+  struct walk_context ctx = {
+      .chown_uid = uid,
+      .chown_gid = gid,
+  };
+  walktree(&ctx, path, chowntree_helper);
 }
 
 static int fd_to_keep = -1;
