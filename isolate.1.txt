@@ -376,6 +376,10 @@ It is recommended to have +sys.fs.protected_hardlinks+ sysctl set to 1
 (which is probably default on modern Linux systems). Otherwise, the user running
 the sandbox could trick isolate to changing the owner of unrelated files.
 
+If you have systemd-coredump installed, please keep in mind that it records core
+files even for processes inside the sandbox. As it configures the kernel to deliver
+core dumps using a pipe, it is not affected by the *--core* limit.
+
 REPRODUCIBILITY
 ---------------
 The reproducibility of results can be improved by tuning some kernel
