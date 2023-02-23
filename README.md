@@ -1,10 +1,11 @@
 isolate
 =======
 
-Isolate is a sandbox built to safely run untrusted executables,
-offering them a limited-access environment and preventing them from
-affecting the host system. It takes advantage of features specific to
-the Linux kernel, like namespaces and control groups.
+Isolate is a sandbox built to safely run untrusted executables, like
+programs submitted by competitors in a programming contest. Isolate
+gives them a limited-access environment, preventing them from affecting
+the host system. It takes advantage of features specific to the Linux
+kernel, like namespaces and control groups.
 
 Isolate was developed by Martin Mareš (<mj@ucw.cz>) and Bernard Blackham
 (<bernard@blackham.com.au>), who still maintain it. Several other people
@@ -31,3 +32,6 @@ To compile Isolate, you need:
 
 You may need `a2x` (found in [AsciiDoc](http://www.methods.co.nz/asciidoc/a2x.1.html)) for building manual.
 But if you only want the isolate binary, you can just run `make isolate`
+
+Recommended system setup is described in sections INSTALLATION and REPRODUCIBILITY
+of the manual page.

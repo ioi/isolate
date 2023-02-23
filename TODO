@@ -5,9 +5,6 @@
   less than the size of the range, so that CPU / node
   restrictions cannot be bypassed
 
-- Manual: Do not enable swap
-- Manual: memory.peak requires kernel 5.19
-
 - check that /proc/sys/core_pattern does not contain a pipe
 
 - reference the grader security paper

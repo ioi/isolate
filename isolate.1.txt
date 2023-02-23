@@ -352,25 +352,27 @@ kinds of namespaces and control groups. These features are available in kernels
 of most Linux distributions now, but if you are building your own kernel, you
 have to be careful.
 
-Debian 7.x and newer require enabling the memory and swap cgroup controllers by
-adding the parameters "cgroup_enable=memory swapaccount=1" to the kernel
-command-line, which can be set using +GRUB_CMDLINE_LINUX_DEFAULT+ in
-/etc/default/grub.
-
 Isolate is designed to run setuid to root. The sub-process inside the sandbox
 then switches to a non-privileged user ID (different for each *--box-id*).
 The range of UIDs available and several filesystem paths are set in a configuration
 file, by default located in /usr/local/etc/isolate.
 
-Before you run isolate with control groups, you need to ensure that the cgroup
-filesystem is enabled and mounted.  Most modern Linux distributions already
-provide cgroup support through a tmpfs mounted at /sys/fs/cgroup, with
-individual controllers mounted within subdirectories.
+For control group mode:
 
-Beware that Isolate does not support cgroup v2 yet, which is used by default by
-recent versions of systemd. If this is your case, you need to add
-+systemd.unified_cgroup_hierarchy=false systemd.legacy_systemd_cgroup_controller=false+
-to kernel parameters.
+- Linux supports two incompatible implementations of control groups: cgroup v1 and v2.
+  This version of Isolate requires v2, which is the default on recent systems).
+
+- Make sure that Isolate's configuration file refers to the correct location where
+  you have the cgroup filesystem mounted.
+
+- If you are using systemd, you need to start the `isolate.service`. It establishes
+  `isolate.scope` whose cgroup subtree is delegated to Isolate by systemd.
+  The service runs a simple daemon `isolate-cg-keeper` to keep the scope alive.
+
+- Reporting memory usage requires Linux kernel 5.19 or newer.
+
+- Since memory limits do not affect swapped-out data, we recommend turning off
+  swap completely.
 
 Isolate expects that the root directory "/" is a mount point. When running
 isolate inside a chroot, this may not be the case, and isolate may fail with
