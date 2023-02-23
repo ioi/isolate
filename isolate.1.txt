@@ -87,6 +87,11 @@ BASIC OPTIONS
 	to stderr except for fatal errors of the sandbox itself. The combination of
 	*--verbose* and *--silent* has an undefined effect.
 
+*--wait*::
+	Multiple instances of Isolate cannot manage the same sandbox simultaneously.
+	If you attempt to do that, the new instance refuses to run. With this option,
+	the new instance waits for the other instance to finish.
+
 LIMITS
 ------
 The following options can limit system resources consumed by the program.
