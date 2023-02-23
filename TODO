@@ -11,5 +11,3 @@
 - check that /proc/sys/core_pattern does not contain a pipe
 
 - reference the grader security paper
-
-- FIXME: setting "cgroup.subtree_control"

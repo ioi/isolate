@@ -61,7 +61,7 @@ setup_cg(void)
     die("Cannot create subgroup %s: %m", subgroup);
 
   write_cg_attr("daemon/cgroup.procs", "%d\n", (int) getpid());
-  write_cg_attr("cgroup.subtree_control", "+cpuset +memory\n");	// FIXME
+  write_cg_attr("cgroup.subtree_control", "+cpuset +memory\n");
 }
 
 int
