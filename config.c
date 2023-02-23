@@ -157,9 +157,3 @@ cf_per_box(int box_id)
   c->box_id = box_id;
   return c;
 }
-
-struct cf_per_box *
-cf_current_box(void)
-{
-  return cf_per_box(box_id);
-}

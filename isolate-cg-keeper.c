@@ -13,8 +13,6 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
-int box_id;	// FIXME
-
 void NONRET __attribute__((format(printf,1,2)))
 die(char *msg, ...)
 {

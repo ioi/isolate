@@ -83,4 +83,9 @@ struct cf_per_box {
 
 void cf_parse(void);
 struct cf_per_box *cf_per_box(int box_id);
-struct cf_per_box *cf_current_box(void);
+
+static inline struct cf_per_box *
+cf_current_box(void)
+{
+  return cf_per_box(box_id);
+}
