@@ -1,7 +1,7 @@
 /*
  *	Process Isolator -- Control Groups
  *
- *	(c) 2012-2021 Martin Mares <mj@ucw.cz>
+ *	(c) 2012-2023 Martin Mares <mj@ucw.cz>
  *	(c) 2012-2014 Bernard Blackham <bernard@blackham.com.au>
  */
 
@@ -174,7 +174,7 @@ cg_init(void)
     return;
 
   if (!dir_exists(cf_cg_root))
-    die("Master control group %s does not exist", cf_cg_root);
+    die("Control group root %s does not exist", cf_cg_root);
 
   snprintf(cg_name, sizeof(cg_name), "box-%d", box_id);
 
@@ -233,7 +233,7 @@ cg_get_run_time_ms(void)
 
   FILE *f = cg_fopen("cpu.stat");
   unsigned long long usec = 0;
-  int found_usage = 0;
+  bool found_usage = false;
 
   char key[CG_BUFSIZE], val[CG_BUFSIZE];
   while (cg_fread_kv(f, key, val))
@@ -241,7 +241,7 @@ cg_get_run_time_ms(void)
       if (!strcmp(key, "usage_usec"))
 	{
 	  usec = atoll(val);
-	  found_usage = 1;
+	  found_usage = true;
 	}
     }
 
