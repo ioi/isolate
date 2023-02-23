@@ -22,8 +22,12 @@ and Bernard's [paper](http://mj.ucw.cz/papers/isolate.pdf) presented
 at the IOI Conference. Also, Isolate's [manual page](http://www.ucw.cz/moe/isolate.1.html)
 is available online.
 
-To compile Isolate, you need the headers for the libcap library
-(usually available in a libcap-dev package).
+To compile Isolate, you need:
+
+  - headers for the libcap library (usually available in a libcap-dev package)
+
+  - headers for the libsystemd library (libsystemd-dev package) for compilation
+    of isolate-cg-keeper
 
 You may need `a2x` (found in [AsciiDoc](http://www.methods.co.nz/asciidoc/a2x.1.html)) for building manual.
 But if you only want the isolate binary, you can just run `make isolate`
