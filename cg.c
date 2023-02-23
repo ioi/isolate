@@ -285,10 +285,16 @@ cg_remove(void)
   if (!cg_enable)
     return;
 
-  cg_write("?cgroup.kill", "1\n");
-
   char path[256];
   cg_makepath(path, sizeof(path), NULL);
-  if (rmdir(path) < 0)
-    die("Cannot remove control group %s: %m", path);
+
+  if (dir_exists(path))
+    {
+      msg("Removing control group\n");
+
+      cg_write("?cgroup.kill", "1\n");
+
+      if (rmdir(path) < 0)
+	die("Cannot remove control group %s: %m", path);
+    }
 }
