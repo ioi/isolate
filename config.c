@@ -1,7 +1,7 @@
 /*
  *	Process Isolator -- Configuration File
  *
- *	(c) 2016 Martin Mares <mj@ucw.cz>
+ *	(c) 2016--2023 Martin Mares <mj@ucw.cz>
  */
 
 #include "isolate.h"
@@ -14,6 +14,7 @@
 #define MAX_LINE_LEN 1024
 
 char *cf_box_root;
+char *cf_lock_root;
 char *cf_cg_root;
 int cf_first_uid;
 int cf_first_gid;
@@ -52,6 +53,8 @@ cf_entry_toplevel(char *key, char *val)
 {
   if (!strcmp(key, "box_root"))
     cf_box_root = cf_string(val);
+  else if (!strcmp(key, "lock_root"))
+    cf_lock_root = cf_string(val);
   else if (!strcmp(key, "cg_root"))
     cf_cg_root = cf_string(val);
   else if (!strcmp(key, "first_uid"))
@@ -97,6 +100,7 @@ static void
 cf_check(void)
 {
   if (!cf_box_root ||
+      !cf_lock_root ||
       !cf_cg_root ||
       !cf_first_uid ||
       !cf_first_gid ||

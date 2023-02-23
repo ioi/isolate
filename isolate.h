@@ -69,6 +69,7 @@ void cg_remove(void);
 /* config.c */
 
 extern char *cf_box_root;
+extern char *cf_lock_root;
 extern char *cf_cg_root;
 extern int cf_first_uid;
 extern int cf_first_gid;

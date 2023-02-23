@@ -5,6 +5,9 @@
 # must be writeable only to root.
 box_root = /var/local/lib/isolate
 
+# Directory where lock files are created.
+lock_root = /run/isolate/locks
+
 # Control group under which we place our subgroups
 cg_root = /sys/fs/cgroup/isolate.slice/isolate.service
 
