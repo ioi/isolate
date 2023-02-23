@@ -23,7 +23,8 @@ by contestants in a controlled environment.
 The sandbox is used in the following way:
 
 * Run *isolate --init*, which initializes the sandbox, creates its working directory and
-prints its name to the standard output. Fails if the sandbox already existed.
+prints its name to the standard output. If the sandbox already existed, it
+is reset.
 
 * Populate the directory with the executable file of the program and its
 input files.
