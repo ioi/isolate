@@ -257,12 +257,6 @@ section.
 	If it happens when handling a page fault, the whole process is killed
 	by the OOM killer with the SIGSEGV signal.
 
-*--cg-timing*::
-	Use control groups for timing, so that the *--time* switch affects the
-	total run time of all processes and threads in the control group.
-	This should be specified with *--run*.
-	This option is turned on by default, use *--no-cg-timing* to turn off.
-
 SPECIAL OPTIONS
 ---------------
 The following options can be useful in special cases.

@@ -90,7 +90,6 @@ static bool special_files;
 
 int cg_enable;
 int cg_memory_limit;
-int cg_timing = 1;
 
 int box_id;
 static char box_dir[1024];
@@ -156,8 +155,7 @@ box_exit(int rc)
 	   *  In CG mode, we must kill the proxy, because it is the init
 	   *  process of the CG and killing it causes all other processes
 	   *  inside the CG to be killed. However, we do not care about
-	   *  rusage (unless somebody asks for --no-cg-timing, which is not
-	   *  reliable anyway).
+	   *  rusage.
 	   */
 	  kill(-proxy_pid, SIGKILL);
 	  kill(proxy_pid, SIGKILL);
@@ -408,7 +406,7 @@ get_wall_time_ms(void)
 static int
 get_run_time_ms(struct rusage *rus)
 {
-  if (cg_enable && cg_timing)
+  if (cg_enable)
     return cg_get_run_time_ms();
 
   if (rus)
@@ -928,8 +926,6 @@ Options:\n\
 -b, --box-id=<id>\tWhen multiple sandboxes are used in parallel, each must get a unique ID\n\
     --cg\t\tEnable use of control groups\n\
     --cg-mem=<size>\tLimit memory usage of the control group to <size> KB\n\
-    --cg-timing\t\tTime limits affects total run time of the control group\n\
-\t\t\t(this is turned on by default, use --no-cg-timing to turn off)\n\
 -c, --chdir=<dir>\tChange directory to <dir> before executing the program\n\
     --core=<size>\tLimit core files to <size> KB (default: 0)\n\
 -d, --dir=<dir>\t\tMake a directory <dir> visible inside the sandbox\n\
@@ -984,8 +980,6 @@ enum opt_code {
   OPT_VERSION,
   OPT_CG,
   OPT_CG_MEM,
-  OPT_CG_TIMING,
-  OPT_NO_CG_TIMING,
   OPT_SHARE_NET,
   OPT_INHERIT_FDS,
   OPT_STDERR_TO_STDOUT,
@@ -1001,11 +995,9 @@ static const struct option long_opts[] = {
   { "chdir",		1, NULL, 'c' },
   { "cg",		0, NULL, OPT_CG },
   { "cg-mem",		1, NULL, OPT_CG_MEM },
-  { "cg-timing",	0, NULL, OPT_CG_TIMING },
   { "cleanup",		0, NULL, OPT_CLEANUP },
   { "core",		1, NULL, OPT_CORE },
   { "dir",		1, NULL, 'd' },
-  { "no-cg-timing",	0, NULL, OPT_NO_CG_TIMING },
   { "no-default-dirs",  0, NULL, 'D' },
   { "fsize",		1, NULL, 'f' },
   { "env",		1, NULL, 'E' },
@@ -1150,14 +1142,6 @@ main(int argc, char **argv)
 	break;
       case OPT_CG_MEM:
 	cg_memory_limit = opt_uint(optarg);
-	require_cg = 1;
-	break;
-      case OPT_CG_TIMING:
-	cg_timing = 1;
-	require_cg = 1;
-	break;
-      case OPT_NO_CG_TIMING:
-	cg_timing = 0;
 	require_cg = 1;
 	break;
       case OPT_SHARE_NET:

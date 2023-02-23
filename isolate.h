@@ -26,7 +26,6 @@ extern int block_quota;
 extern int inode_quota;
 extern int cg_enable;
 extern int cg_memory_limit;
-extern int cg_timing;
 
 extern int box_id;
 extern uid_t box_uid, orig_uid;
