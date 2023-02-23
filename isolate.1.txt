@@ -43,7 +43,7 @@ processes of threads. If you need that, turn on the control group mode
 BASIC OPTIONS
 -------------
 *-b, --box-id=*'id'::
-	When you run multiple sandboxes in parallel, you have to assign each unique
+	When you run multiple sandboxes in parallel, you have to assign unique
 	IDs to them by this option. See the discussion on UIDs in the INSTALLATION
 	section. The ID defaults to 0.
 
