@@ -11,3 +11,7 @@
 - check that /proc/sys/core_pattern does not contain a pipe
 
 - reference the grader security paper
+
+- keeper daemon: report to systemd that it started successfully
+
+- FIXME: setting "cgroup.subtree_control"
