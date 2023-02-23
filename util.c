@@ -1,7 +1,7 @@
 /*
  *	Process Isolator -- Utility Functions
  *
- *	(c) 2012-2022 Martin Mares <mj@ucw.cz>
+ *	(c) 2012-2023 Martin Mares <mj@ucw.cz>
  *	(c) 2012-2014 Bernard Blackham <bernard@blackham.com.au>
  */
 
@@ -211,7 +211,24 @@ chowntree(char *path, uid_t uid, gid_t gid, bool keep_special_files)
   walktree(&ctx, path, chowntree_helper);
 }
 
-static int fd_to_keep = -1;
+static int fds_to_keep[4];
+static int num_kept_fds;
+
+void
+keep_fd(int fd)
+{
+  assert(num_kept_fds < ARRAY_SIZE(fds_to_keep));
+  fds_to_keep[num_kept_fds++] = fd;
+}
+
+static bool
+fd_is_kept(int fd)
+{
+  for (int i=0; i < num_kept_fds; i++)
+    if (fds_to_keep[i] == fd)
+      return true;
+  return false;
+}
 
 void
 close_all_fds(void)
@@ -230,7 +247,7 @@ close_all_fds(void)
       long int fd = strtol(e->d_name, &end, 10);
       if (*end)
 	continue;
-      if (fd >= 0 && fd <= 2 || fd == dir_fd || fd == fd_to_keep)
+      if (fd >= 0 && fd <= 2 || fd == dir_fd || fd_is_kept(fd))
 	continue;
       close(fd);
     }
@@ -257,7 +274,7 @@ meta_open(const char *name)
     die("Failed to switch FS UID back: %m");
   if (!metafile)
     die("Failed to open metafile '%s'",name);
-  fd_to_keep = fileno(metafile);
+  keep_fd(fileno(metafile));
 }
 
 void
