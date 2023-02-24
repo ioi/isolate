@@ -173,6 +173,26 @@ cg_init(void)
   if (!cg_enable)
     return;
 
+  if (strlen(cf_cg_root) > 5 && !memcmp(cf_cg_root, "auto:", 5))
+    {
+      char *filename = cf_cg_root + 5;
+      FILE *f = fopen(filename, "r");
+      if (!f)
+	die("Cannot open %s: %m", filename);
+
+      char *line, *sep;
+      size_t len;
+      if (getline(&line, &len, f) < 0)
+	die("Cannot read from %s: %m", filename);
+
+      sep = strchr(line, '\n');
+      if (sep)
+	*sep = 0;
+
+      fclose(f);
+      cf_cg_root = line;
+    }
+
   if (!dir_exists(cf_cg_root))
     die("Control group root %s does not exist", cf_cg_root);
 
