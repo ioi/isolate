@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import os
 import socket
 import struct
 import subprocess
@@ -67,7 +68,6 @@ class Connection:
 
         self.box_id = 0
         proc = await asyncio.create_subprocess_exec(
-            # FIXME: quota options
             '/usr/local/bin/isolate',
             '--init',
             '--cg',
@@ -116,7 +116,9 @@ async def connect_callback(reader, writer):
 
 
 async def main():
-    server = await asyncio.start_unix_server(connect_callback, path='socket', limit=8192)
+    socket_path = 'socket'
+    server = await asyncio.start_unix_server(connect_callback, path=socket_path, limit=8192)
+    os.chmod(socket_path, 0o777)
     await server.serve_forever()
 
 

@@ -7,3 +7,6 @@
 
 - Daemon:
 	- quota option on init
+	- logging
+	- make socket permissions configurable
+	- clean all boxes on init
