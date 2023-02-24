@@ -10,3 +10,4 @@
 	- logging
 	- make socket permissions configurable
 	- clean all boxes on init
+	- wait for a box to become available (if all boxes busy)
