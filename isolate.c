@@ -944,6 +944,9 @@ do_cleanup(void)
 static void
 init(void)
 {
+  if (cf_restricted_init && !invoked_by_root)
+    die("New sandboxes can be created only by root");
+
   lock_box(true);
 
   do_cleanup();

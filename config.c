@@ -19,6 +19,7 @@ char *cf_cg_root;
 int cf_first_uid;
 int cf_first_gid;
 int cf_num_boxes;
+int cf_restricted_init;
 
 static int line_number;
 static struct cf_per_box *per_box_configs;
@@ -63,6 +64,8 @@ cf_entry_toplevel(char *key, char *val)
     cf_first_gid = cf_int(val);
   else if (!strcmp(key, "num_boxes"))
     cf_num_boxes = cf_int(val);
+  else if (!strcmp(key, "restricted_init"))
+    cf_restricted_init = cf_int(val);
   else
     cf_err("Unknown configuration item");
 }

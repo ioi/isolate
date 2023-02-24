@@ -74,6 +74,7 @@ extern char *cf_cg_root;
 extern int cf_first_uid;
 extern int cf_first_gid;
 extern int cf_num_boxes;
+extern int cf_restricted_init;
 
 struct cf_per_box {
   struct cf_per_box *next;
