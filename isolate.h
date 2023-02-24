@@ -40,6 +40,7 @@ char * __attribute__((format(printf,1,2))) xsprintf(const char *fmt, ...);
 int dir_exists(char *path);
 void rmtree(char *path);
 void make_dir(char *path);
+void make_dir_for(char *path);
 void chowntree(char *path, uid_t uid, gid_t gid, bool keep_special_files);
 void keep_fd(int fd);
 void close_all_fds(void);

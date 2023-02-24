@@ -86,6 +86,18 @@ make_dir(char *path)
     die("Cannot create %s: already exists, but not a directory", path);
 }
 
+void make_dir_for(char *path)
+{
+  char *copy = xstrdup(path);
+  char *last_slash = strrchr(copy, '/');
+  if (last_slash)
+    {
+      *last_slash = 0;
+      make_dir(copy);
+    }
+  free(copy);
+}
+
 /*
  *  Once upon a time, we used nftw() for traversing directory trees.
  *  It was simple, but unfortunately prone to symlink swapping attacks.
