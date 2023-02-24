@@ -12,6 +12,7 @@
 #include <fcntl.h>
 #include <getopt.h>
 #include <grp.h>
+#include <limits.h>
 #include <sched.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -1210,12 +1211,13 @@ static const struct option long_opts[] = {
 static unsigned int
 opt_uint(char *val)
 {
+  // This accepts unsigned values which also fit within a signed int
   char *end;
   errno = 0;
   unsigned long int x = strtoul(val, &end, 10);
   if (errno || end == val || end && *end)
     usage("Invalid numeric parameter: %s\n", val);
-  if ((unsigned long int)(unsigned int) x != x)
+  if (x > INT_MAX)
     usage("Numeric parameter out of range: %s\n", val);
   return x;
 }
