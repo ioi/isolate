@@ -35,6 +35,8 @@ extern gid_t box_gid, orig_gid;
 
 void *xmalloc(size_t size);
 char *xstrdup(char *str);
+char * __attribute__((format(printf,1,2))) xsprintf(const char *fmt, ...);
+
 int dir_exists(char *path);
 void rmtree(char *path);
 void make_dir(char *path);

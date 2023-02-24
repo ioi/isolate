@@ -11,6 +11,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,6 +35,20 @@ xstrdup(char *str)
   if (!p)
     die("Out of memory");
   return p;
+}
+
+char *xsprintf(const char *fmt, ...)
+{
+  va_list args;
+  va_start(args, fmt);
+
+  char *out;
+  int res = vasprintf(&out, fmt, args);
+  if (res < 0)
+    die("Out of memory");
+
+  va_end(args);
+  return out;
 }
 
 int
