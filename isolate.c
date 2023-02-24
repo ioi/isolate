@@ -90,6 +90,8 @@ static int default_dirs = 1;
 static int tty_hack;
 static bool special_files;
 static bool wait_if_busy;
+static int as_uid = -1;
+static int as_gid = -1;
 
 int cg_enable;
 int cg_memory_limit;
@@ -103,6 +105,7 @@ uid_t box_uid;
 gid_t box_gid;
 uid_t orig_uid;
 gid_t orig_gid;
+static bool invoked_by_root;
 
 static int partial_line;
 static int cleanup_ownership;
@@ -185,7 +188,7 @@ lock_box(bool is_init)
     {
       if (n != sizeof(lock) || lock.magic != LOCK_MAGIC)
 	die("Lock file %s has incompatible format", lock_name);
-      if (lock.is_initialized && lock.owner_uid != orig_uid && orig_uid != 0)
+      if (lock.is_initialized && lock.owner_uid != orig_uid && !invoked_by_root)
 	die("This box belongs to a different user (uid %d)", lock.owner_uid);
       if (lock.cg_enabled != cg_enable)
 	die("This box was initialized with an incompatible control group mode");
@@ -905,6 +908,29 @@ self_name(void)
 }
 
 static void
+get_credentials(void)
+{
+  if (geteuid())
+    die("Must be started as root");
+  if (getegid() && setegid(0) < 0)
+    die("Cannot switch to root group: %m");
+
+  orig_uid = getuid();
+  orig_gid = getgid();
+  invoked_by_root = !orig_uid;
+
+  if (as_uid >= 0 || as_gid >= 0)
+    {
+      if (!invoked_by_root)
+	die("You must be root to use --as-uid or --as-gid");
+      if (as_uid < 0 || as_gid < 0)
+	die("--as-uid and --as-gid must be used either both or none");
+      orig_uid = as_uid;
+      orig_gid = as_gid;
+    }
+}
+
+static void
 do_cleanup(void)
 {
   if (dir_exists(box_dir))
@@ -1065,6 +1091,8 @@ usage(const char *msg, ...)
 Usage: isolate [<options>] <command>\n\
 \n\
 Options:\n\
+    --as-uid=<uid>\tPerform action on behalf of a given user (requires root)\n\
+    --as-gid=<gid>\tPerform action on behalf of a given group (requires root)\n\
 -b, --box-id=<id>\tWhen multiple sandboxes are used in parallel, each must get a unique ID\n\
     --cg\t\tEnable use of control groups\n\
     --cg-mem=<size>\tLimit memory usage of the control group to <size> KB\n\
@@ -1130,11 +1158,15 @@ enum opt_code {
   OPT_CORE,
   OPT_SPECIAL_FILES,
   OPT_WAIT,
+  OPT_AS_UID,
+  OPT_AS_GID,
 };
 
 static const char short_opts[] = "b:c:d:DeE:f:i:k:m:M:o:p::q:r:st:vw:x:";
 
 static const struct option long_opts[] = {
+  { "as-uid",		1, NULL, OPT_AS_UID },
+  { "as-gid",		1, NULL, OPT_AS_GID },
   { "box-id",		1, NULL, 'b' },
   { "chdir",		1, NULL, 'c' },
   { "cg",		0, NULL, OPT_CG },
@@ -1311,6 +1343,12 @@ main(int argc, char **argv)
       case OPT_WAIT:
 	wait_if_busy = true;
 	break;
+      case OPT_AS_UID:
+	as_uid = opt_uint(optarg);
+	break;
+      case OPT_AS_GID:
+	as_gid = opt_uint(optarg);
+	break;
       default:
 	usage(NULL);
       }
@@ -1326,13 +1364,7 @@ main(int argc, char **argv)
   if (require_cg && !cg_enable)
     usage("Options related to control groups require --cg to be set.\n");
 
-  if (geteuid())
-    die("Must be started as root");
-  if (getegid() && setegid(0) < 0)
-    die("Cannot switch to root group: %m");
-  orig_uid = getuid();
-  orig_gid = getgid();
-
+  get_credentials();
   umask(022);
   cf_parse();
   box_init();
