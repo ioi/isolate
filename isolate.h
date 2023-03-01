@@ -1,11 +1,12 @@
 /*
  *	Process Isolator
  *
- *	(c) 2012-2017 Martin Mares <mj@ucw.cz>
+ *	(c) 2012-2023 Martin Mares <mj@ucw.cz>
  *	(c) 2012-2014 Bernard Blackham <bernard@blackham.com.au>
  */
 
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <sys/types.h>
 
@@ -38,7 +39,7 @@ char *xstrdup(char *str);
 int dir_exists(char *path);
 void rmtree(char *path);
 void make_dir(char *path);
-void chowntree(char *path, uid_t uid, gid_t gid);
+void chowntree(char *path, uid_t uid, gid_t gid, bool keep_special_files);
 void close_all_fds(void);
 
 void meta_open(const char *name);
