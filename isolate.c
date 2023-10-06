@@ -994,7 +994,7 @@ enum opt_code {
   OPT_SPECIAL_FILES,
 };
 
-static const char short_opts[] = "b:c:d:DeE:f:i:k:m:M:o:p::q:r:st:vw:x:";
+static const char short_opts[] = "b:c:d:DeE:f:i:k:m:M:n:o:p::q:r:st:vw:x:";
 
 static const struct option long_opts[] = {
   { "box-id",		1, NULL, 'b' },
