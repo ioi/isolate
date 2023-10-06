@@ -940,6 +940,7 @@ Options:\n\
 \t\t\t\tfs\tMount a filesystem (e.g., --dir=/proc:proc:fs)\n\
 \t\t\t\tmaybe\tSkip the rule if <out> does not exist\n\
 \t\t\t\tnoexec\tDo not allow execution of binaries\n\
+\t\t\t\tnorec\tDo not bind the directory recursively\n\
 \t\t\t\trw\tAllow read-write access\n\
 \t\t\t\ttmp\tCreate as a temporary directory (implies rw)\n\
 -D, --no-default-dirs\tDo not add default directory rules\n\
