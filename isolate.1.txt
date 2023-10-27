@@ -309,7 +309,9 @@ of format 'key'*:*'value'. The following keys are defined:
 
 *cg-mem*::
 	When control groups are enabled, this is the total memory use
-	by the whole control group (in kilobytes).
+	by the whole control group (in kilobytes). If you use *isolate --run*
+	multiple times in the same sandbox, the control group retains cached
+	data from the previous runs, which also contributes to *cg-mem*.
 *cg-oom-killed*::
 	Present when the program was killed by the out-of-memory killer
 	(e.g., because it has exceeded the memory limit of its control group).
