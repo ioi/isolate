@@ -190,7 +190,7 @@ cg_init(void)
 	*sep = 0;
 
       fclose(f);
-      cf_cg_root = line;
+      cf_cg_root = xstrdup(line);
     }
 
   if (!dir_exists(cf_cg_root))
