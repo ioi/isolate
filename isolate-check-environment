@@ -147,6 +147,9 @@ else
    echo "Using cgroup root: $cg_root"
    cgroup_check cpuset.cpus
    cgroup_check cpuset.mems
+   cgroup_check cpu.stat
+   cgroup_check cgroup.procs
+   cgroup_check memory.events
    cgroup_check memory.max
 fi
 
