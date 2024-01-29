@@ -110,7 +110,24 @@ print_finish() {
     print_check_status=
 }
 
-cg_root=$(cat /run/isolate/cgroup)
+# Try to find the cgroup root in /usr/local/etc/isolate config file, in cg_root variable.
+if [ -f /usr/local/etc/isolate ] ; then
+    cg_root=$(awk -F "=" '/^[^#]*cg_root/{print $2}' /usr/local/etc/isolate | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+fi
+
+# Handle case when cg_root is auto:<filename>
+case $cg_root in
+auto:*)
+  filename=$(echo "$cg_root" | cut -d':' -f2-)
+  if [ -f "${filename}" ]; then
+    cg_root=$(cat "${filename}")
+  else
+    warn "cgroup root file ${filename} not found. Double-check your config and that the isolate.service is running."
+    cg_root=
+  fi
+  ;;
+esac
+
 # Check that cgroups are enabled.
 cgroup_check() {
     local cgroup=$1
@@ -121,9 +138,17 @@ cgroup_check() {
     fi
     print_finish
 }
-cgroup_check cpuset.cpus
-cgroup_check cpuset.mems
-cgroup_check memory.max
+
+# Check that cgroups are enabled.
+if [ -z "$cg_root" ] ; then
+    warn "cgroup root not found. isolate --cg cannot be used."
+    exit_status=1
+else
+   echo "Using cgroup root: $cg_root"
+   cgroup_check cpuset.cpus
+   cgroup_check cpuset.mems
+   cgroup_check memory.max
+fi
 
 # Check that swap is either disabled or accounted for.
 swap_check() {
