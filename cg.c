@@ -180,17 +180,17 @@ cg_init(void)
       if (!f)
 	die("Cannot open %s: %m", filename);
 
-      char *line, *sep;
+      char *line = NULL;
       size_t len;
       if (getline(&line, &len, f) < 0)
 	die("Cannot read from %s: %m", filename);
 
-      sep = strchr(line, '\n');
+      char *sep = strchr(line, '\n');
       if (sep)
 	*sep = 0;
 
       fclose(f);
-      cf_cg_root = xstrdup(line);
+      cf_cg_root = line;
     }
 
   if (!dir_exists(cf_cg_root))
