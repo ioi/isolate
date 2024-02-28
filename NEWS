@@ -1,0 +1,28 @@
+Version 2.0  [2024-02-28]
+
+  •  This version runs only on systems supporting CGroup v2, which are
+     basically all new Linux systems. If you need to stick with CGroup v1,
+     please use Isolate 1.10.1.
+
+  •  If you are running systemd, Isolate now comes with isolate.service
+     that delegates a subtree of the cgroup hierarchy to Isolate.
+     On systems without systemd, you have to set up the delegation
+     yourself and set its root in Isolate's configuration file.
+
+  •  The --cg-timing switch has been removed. In control group mode,
+     this mode of timing is always used.
+
+  •  Added a simple protocol for locking sandboxes. When a sandbox is
+     initialized using "isolate --init", it is reserved for the calling
+     user until "isolate --cleanup" is used. It is also not allowed
+     to call "isolate --run" multiple times in parallel on the same box.
+
+  •  "isolate --init" resets the sandbox if it already existed.
+
+  •  Root can operate sandboxes on behalf of other users using
+     --as-uid and --as-gid options.
+
+  •  Configuration can specify than only root is allowed to create new
+     sandboxes. Together with the previous feature, it allows for creation
+     of system-wide daemons allocating sandboxes to users. One such daemon
+     will probably appear in a future release of Isolate.
