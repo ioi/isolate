@@ -1,9 +1,9 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Identifies potential sources issues when using isolate.
 #
 #     (c) 2017 Bernard Blackham <bernard@blackham.com.au>
-#     (c) 2022 Martin Mares <mj@ucw.cz>
+#     (c) 2022-2024 Martin Mares <mj@ucw.cz>
 #     (c) 2024 Stephan Gomer <me@sadfun.org>
 #
 
@@ -267,6 +267,26 @@ thp_check() {
     print_finish
 }
 thp_check
+
+# Piping of core dumps to programs can make program crashes significantly
+# slower. Unfortunetely, dumps to pipes are not affected by RLIMIT_CORE,
+# so we cannot easily disable them inside the sandbox.
+core_check() {
+    print_start_check "core file pattern"
+    local val
+    if val="$(cat /proc/sys/kernel/core_pattern)" ; then
+        if [ "${val:0:1}" = '|' ] ; then
+            print_fail
+            action \
+                "core files are piped to a program." \
+                "echo core >/proc/sys/kernel/core_pattern"
+        fi
+    else
+        print_skipped
+    fi
+    print_finish
+}
+core_check
 
 
 exit $exit_status

@@ -5,6 +5,4 @@
   less than the size of the range, so that CPU / node
   restrictions cannot be bypassed
 
-- check that /proc/sys/core_pattern does not contain a pipe
-
 - reference the grader security paper
