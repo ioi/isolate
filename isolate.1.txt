@@ -263,6 +263,10 @@ section.
 	If it happens when handling a page fault, the whole process is killed
 	by the OOM killer with the SIGSEGV signal.
 
+*--print-cg-root*::
+	Print the root of the control group hierarchy in */sys/* and exit.
+	This is used by the *isolate-check-environment* script.
+
 SPECIAL OPTIONS
 ---------------
 The following options can be useful in special cases.

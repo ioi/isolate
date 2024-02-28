@@ -1143,6 +1143,7 @@ Commands:\n\
     --init\t\tInitialize sandbox (and its control group when --cg is used)\n\
     --run -- <cmd> ...\tRun given command within sandbox\n\
     --cleanup\t\tClean up sandbox\n\
+    --print-cg-root\tPrint the root of cgroup hierarchy\n\
     --version\t\tDisplay program version and configuration\n\
 ");
   exit(2);
@@ -1164,6 +1165,7 @@ enum opt_code {
   OPT_WAIT,
   OPT_AS_UID,
   OPT_AS_GID,
+  OPT_PRINT_CG_ROOT,
 };
 
 static const char short_opts[] = "b:c:d:DeE:f:i:k:m:M:o:p::q:r:st:vw:x:";
@@ -1194,6 +1196,7 @@ static const struct option long_opts[] = {
   { "silent",		0, NULL, 's' },
   { "stack",		1, NULL, 'k' },
   { "open-files",	1, NULL, 'n' },
+  { "print-cg-root",	0, NULL, OPT_PRINT_CG_ROOT },
   { "special-files",	0, NULL, OPT_SPECIAL_FILES },
   { "stderr",		1, NULL, 'r' },
   { "stderr-to-stdout",	0, NULL, OPT_STDERR_TO_STDOUT },
@@ -1317,6 +1320,7 @@ main(int argc, char **argv)
       case OPT_RUN:
       case OPT_CLEANUP:
       case OPT_VERSION:
+      case OPT_PRINT_CG_ROOT:
 	if (!mode || (int) mode == c)
 	  mode = c;
 	else
@@ -1366,6 +1370,9 @@ main(int argc, char **argv)
       return 0;
     }
 
+  if (mode == OPT_PRINT_CG_ROOT)
+    cg_enable = 1;
+
   if (require_cg && !cg_enable)
     usage("Options related to control groups require --cg to be set.\n");
 
@@ -1391,6 +1398,9 @@ main(int argc, char **argv)
       if (optind < argc)
 	usage("--cleanup mode takes no parameters\n");
       cleanup();
+      break;
+    case OPT_PRINT_CG_ROOT:
+      printf("%s\n", cf_cg_root);
       break;
     default:
       die("Internal error: mode mismatch");
