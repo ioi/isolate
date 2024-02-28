@@ -288,5 +288,24 @@ core_check() {
 }
 core_check
 
+# Without protected_hardlinks, the user running Isolate could trick it into
+# changing ownership of unrelated files.
+hardlink_check() {
+    print_start_check "hard link protection"
+    local val
+    if val="$(cat /proc/sys/fs/protected_hardlinks)" ; then
+        if [ $val = 0 ] ; then
+            print_fail
+            action \
+                "hardlink protection is disabled." \
+                "echo 1 >/proc/sys/fs/protected_hardlinks"
+        fi
+    else
+        print_skipped
+    fi
+    print_finish
+}
+hardlink_check
+
 
 exit $exit_status
