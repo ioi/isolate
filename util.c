@@ -1,7 +1,7 @@
 /*
  *	Process Isolator -- Utility Functions
  *
- *	(c) 2012-2022 Martin Mares <mj@ucw.cz>
+ *	(c) 2012-2023 Martin Mares <mj@ucw.cz>
  *	(c) 2012-2014 Bernard Blackham <bernard@blackham.com.au>
  */
 
@@ -11,6 +11,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,6 +35,20 @@ xstrdup(char *str)
   if (!p)
     die("Out of memory");
   return p;
+}
+
+char *xsprintf(const char *fmt, ...)
+{
+  va_list args;
+  va_start(args, fmt);
+
+  char *out;
+  int res = vasprintf(&out, fmt, args);
+  if (res < 0)
+    die("Out of memory");
+
+  va_end(args);
+  return out;
 }
 
 int
@@ -69,6 +84,18 @@ make_dir(char *path)
     die("Cannot stat %s: %m", path);
   if (!S_ISDIR(st.st_mode))
     die("Cannot create %s: already exists, but not a directory", path);
+}
+
+void make_dir_for(char *path)
+{
+  char *copy = xstrdup(path);
+  char *last_slash = strrchr(copy, '/');
+  if (last_slash)
+    {
+      *last_slash = 0;
+      make_dir(copy);
+    }
+  free(copy);
 }
 
 /*
@@ -211,7 +238,24 @@ chowntree(char *path, uid_t uid, gid_t gid, bool keep_special_files)
   walktree(&ctx, path, chowntree_helper);
 }
 
-static int fd_to_keep = -1;
+static int fds_to_keep[4];
+static int num_kept_fds;
+
+void
+keep_fd(int fd)
+{
+  assert(num_kept_fds < ARRAY_SIZE(fds_to_keep));
+  fds_to_keep[num_kept_fds++] = fd;
+}
+
+static bool
+fd_is_kept(int fd)
+{
+  for (int i=0; i < num_kept_fds; i++)
+    if (fds_to_keep[i] == fd)
+      return true;
+  return false;
+}
 
 void
 close_all_fds(void)
@@ -230,7 +274,7 @@ close_all_fds(void)
       long int fd = strtol(e->d_name, &end, 10);
       if (*end)
 	continue;
-      if (fd >= 0 && fd <= 2 || fd == dir_fd || fd == fd_to_keep)
+      if (fd >= 0 && fd <= 2 || fd == dir_fd || fd_is_kept(fd))
 	continue;
       close(fd);
     }
@@ -257,7 +301,7 @@ meta_open(const char *name)
     die("Failed to switch FS UID back: %m");
   if (!metafile)
     die("Failed to open metafile '%s'",name);
-  fd_to_keep = fileno(metafile);
+  keep_fd(fileno(metafile));
 }
 
 void

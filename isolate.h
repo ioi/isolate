@@ -26,7 +26,6 @@ extern int block_quota;
 extern int inode_quota;
 extern int cg_enable;
 extern int cg_memory_limit;
-extern int cg_timing;
 
 extern int box_id;
 extern uid_t box_uid, orig_uid;
@@ -36,10 +35,14 @@ extern gid_t box_gid, orig_gid;
 
 void *xmalloc(size_t size);
 char *xstrdup(char *str);
+char * __attribute__((format(printf,1,2))) xsprintf(const char *fmt, ...);
+
 int dir_exists(char *path);
 void rmtree(char *path);
 void make_dir(char *path);
+void make_dir_for(char *path);
 void chowntree(char *path, uid_t uid, gid_t gid, bool keep_special_files);
+void keep_fd(int fd);
 void close_all_fds(void);
 
 void meta_open(const char *name);
@@ -69,11 +72,12 @@ void cg_remove(void);
 /* config.c */
 
 extern char *cf_box_root;
+extern char *cf_lock_root;
 extern char *cf_cg_root;
-extern char *cf_cg_parent;
 extern int cf_first_uid;
 extern int cf_first_gid;
 extern int cf_num_boxes;
+extern int cf_restricted_init;
 
 struct cf_per_box {
   struct cf_per_box *next;
@@ -84,4 +88,9 @@ struct cf_per_box {
 
 void cf_parse(void);
 struct cf_per_box *cf_per_box(int box_id);
-struct cf_per_box *cf_current_box(void);
+
+static inline struct cf_per_box *
+cf_current_box(void)
+{
+  return cf_per_box(box_id);
+}

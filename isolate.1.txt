@@ -23,7 +23,8 @@ by contestants in a controlled environment.
 The sandbox is used in the following way:
 
 * Run *isolate --init*, which initializes the sandbox, creates its working directory and
-prints its name to the standard output. Fails if the sandbox already existed.
+prints its name to the standard output. If the sandbox already existed, it
+is reset.
 
 * Populate the directory with the executable file of the program and its
 input files.
@@ -43,7 +44,7 @@ processes of threads. If you need that, turn on the control group mode
 BASIC OPTIONS
 -------------
 *-b, --box-id=*'id'::
-	When you run multiple sandboxes in parallel, you have to assign each unique
+	When you run multiple sandboxes in parallel, you have to assign unique
 	IDs to them by this option. See the discussion on UIDs in the INSTALLATION
 	section. The ID defaults to 0.
 
@@ -85,6 +86,11 @@ BASIC OPTIONS
 	Tell the sandbox manager to keep silence. No status messages are printed
 	to stderr except for fatal errors of the sandbox itself. The combination of
 	*--verbose* and *--silent* has an undefined effect.
+
+*--wait*::
+	Multiple instances of Isolate cannot manage the same sandbox simultaneously.
+	If you attempt to do that, the new instance refuses to run. With this option,
+	the new instance waits for the other instance to finish.
 
 LIMITS
 ------
@@ -257,11 +263,9 @@ section.
 	If it happens when handling a page fault, the whole process is killed
 	by the OOM killer with the SIGSEGV signal.
 
-*--cg-timing*::
-	Use control groups for timing, so that the *--time* switch affects the
-	total run time of all processes and threads in the control group.
-	This should be specified with *--run*.
-	This option is turned on by default, use *--no-cg-timing* to turn off.
+*--print-cg-root*::
+	Print the root of the control group hierarchy in */sys/* and exit.
+	This is used by the *isolate-check-environment* script.
 
 SPECIAL OPTIONS
 ---------------
@@ -295,6 +299,12 @@ The following options can be useful in special cases.
 	and directories) created inside the sandbox. If you need them, this option disables
 	that behavior, but you need to carefully check what you open.
 
+*--as-uid=*'uid', *--as-gid=*'gid'::
+	Act on behalf of the specified user and group (only if Isolate was invoked by root).
+	This is used in scenarios where a root-controlled process manages creation of sandboxes
+	for regular users, usually in conjunction with the *restricted_init* option in
+	the configuration file.
+
 META-FILES
 ----------
 The meta-file contains miscellaneous meta-information on execution of the
@@ -303,7 +313,9 @@ of format 'key'*:*'value'. The following keys are defined:
 
 *cg-mem*::
 	When control groups are enabled, this is the total memory use
-	by the whole control group (in kilobytes).
+	by the whole control group (in kilobytes). If you use *isolate --run*
+	multiple times in the same sandbox, the control group retains cached
+	data from the previous runs, which also contributes to *cg-mem*.
 *cg-oom-killed*::
 	Present when the program was killed by the out-of-memory killer
 	(e.g., because it has exceeded the memory limit of its control group).
@@ -352,25 +364,27 @@ kinds of namespaces and control groups. These features are available in kernels
 of most Linux distributions now, but if you are building your own kernel, you
 have to be careful.
 
-Debian 7.x and newer require enabling the memory and swap cgroup controllers by
-adding the parameters "cgroup_enable=memory swapaccount=1" to the kernel
-command-line, which can be set using +GRUB_CMDLINE_LINUX_DEFAULT+ in
-/etc/default/grub.
-
 Isolate is designed to run setuid to root. The sub-process inside the sandbox
 then switches to a non-privileged user ID (different for each *--box-id*).
 The range of UIDs available and several filesystem paths are set in a configuration
 file, by default located in /usr/local/etc/isolate.
 
-Before you run isolate with control groups, you need to ensure that the cgroup
-filesystem is enabled and mounted.  Most modern Linux distributions already
-provide cgroup support through a tmpfs mounted at /sys/fs/cgroup, with
-individual controllers mounted within subdirectories.
+For control group mode:
 
-Beware that Isolate does not support cgroup v2 yet, which is used by default by
-recent versions of systemd. If this is your case, you need to add
-+systemd.unified_cgroup_hierarchy=false systemd.legacy_systemd_cgroup_controller=false+
-to kernel parameters.
+- Linux supports two incompatible implementations of control groups: cgroup v1 and v2.
+  This version of Isolate requires v2, which is the default on recent systems).
+
+- Make sure that Isolate's configuration file refers to the correct location where
+  you have the cgroup filesystem mounted.
+
+- If you are using systemd, you need to start the `isolate.service`. It establishes
+  `isolate.scope` whose cgroup subtree is delegated to Isolate by systemd.
+  The service runs a simple daemon `isolate-cg-keeper` to keep the scope alive.
+
+- Reporting memory usage requires Linux kernel 5.19 or newer.
+
+- Since memory limits do not affect swapped-out data, we recommend turning off
+  swap completely.
 
 Isolate expects that the root directory "/" is a mount point. When running
 isolate inside a chroot, this may not be the case, and isolate may fail with

@@ -1,7 +1,7 @@
 /*
  *	Process Isolator -- Configuration File
  *
- *	(c) 2016 Martin Mares <mj@ucw.cz>
+ *	(c) 2016--2023 Martin Mares <mj@ucw.cz>
  */
 
 #include "isolate.h"
@@ -14,11 +14,12 @@
 #define MAX_LINE_LEN 1024
 
 char *cf_box_root;
+char *cf_lock_root;
 char *cf_cg_root;
-char *cf_cg_parent;
 int cf_first_uid;
 int cf_first_gid;
 int cf_num_boxes;
+int cf_restricted_init;
 
 static int line_number;
 static struct cf_per_box *per_box_configs;
@@ -53,16 +54,18 @@ cf_entry_toplevel(char *key, char *val)
 {
   if (!strcmp(key, "box_root"))
     cf_box_root = cf_string(val);
+  else if (!strcmp(key, "lock_root"))
+    cf_lock_root = cf_string(val);
   else if (!strcmp(key, "cg_root"))
     cf_cg_root = cf_string(val);
-  else if (!strcmp(key, "cg_parent"))
-    cf_cg_parent = cf_string(val);
   else if (!strcmp(key, "first_uid"))
     cf_first_uid = cf_int(val);
   else if (!strcmp(key, "first_gid"))
     cf_first_gid = cf_int(val);
   else if (!strcmp(key, "num_boxes"))
     cf_num_boxes = cf_int(val);
+  else if (!strcmp(key, "restricted_init"))
+    cf_restricted_init = cf_int(val);
   else
     cf_err("Unknown configuration item");
 }
@@ -100,6 +103,7 @@ static void
 cf_check(void)
 {
   if (!cf_box_root ||
+      !cf_lock_root ||
       !cf_cg_root ||
       !cf_first_uid ||
       !cf_first_gid ||
@@ -159,10 +163,4 @@ cf_per_box(int box_id)
   per_box_configs = c;
   c->box_id = box_id;
   return c;
-}
-
-struct cf_per_box *
-cf_current_box(void)
-{
-  return cf_per_box(box_id);
 }
