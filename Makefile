@@ -1,5 +1,5 @@
 # Makefile for Isolate
-# (c) 2015--2023 Martin Mares <mj@ucw.cz>
+# (c) 2015--2024 Martin Mares <mj@ucw.cz>
 # (c) 2017 Bernard Blackham <bernard@blackham.com.au>
 
 all: isolate isolate.1 isolate.1.html isolate-check-environment isolate-cg-keeper
@@ -8,8 +8,8 @@ CC=gcc
 CFLAGS=-std=gnu99 -Wall -Wextra -Wno-parentheses -Wno-unused-result -Wno-missing-field-initializers -Wstrict-prototypes -Wmissing-prototypes -D_GNU_SOURCE
 LIBS=-lcap
 
-VERSION=1.10.1
-YEAR=2023
+VERSION=2.0
+YEAR=2024
 BUILD_DATE:=$(shell date '+%Y-%m-%d')
 BUILD_COMMIT:=$(shell if git rev-parse >/dev/null 2>/dev/null ; then git describe --always --tags ; else echo '<unknown>' ; fi)
 
