@@ -4,6 +4,7 @@
 #
 #     (c) 2017 Bernard Blackham <bernard@blackham.com.au>
 #     (c) 2022 Martin Mares <mj@ucw.cz>
+#     (c) 2024 Stephan Gomer <me@sadfun.org>
 #
 
 usage() {
@@ -109,19 +110,48 @@ print_finish() {
     print_check_status=
 }
 
+# Try to find the cgroup root in /usr/local/etc/isolate config file, in cg_root variable.
+if [ -f /usr/local/etc/isolate ] ; then
+    cg_root=$(awk -F "=" '/^[^#]*cg_root/{print $2}' /usr/local/etc/isolate | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')
+fi
+
+# Handle case when cg_root is auto:<filename>
+case $cg_root in
+auto:*)
+  filename=$(echo "$cg_root" | cut -d':' -f2-)
+  if [ -f "${filename}" ]; then
+    cg_root=$(cat "${filename}")
+  else
+    warn "cgroup root file ${filename} not found. Double-check your config and that the isolate.service is running."
+    cg_root=
+  fi
+  ;;
+esac
+
 # Check that cgroups are enabled.
 cgroup_check() {
     local cgroup=$1
     print_start_check "cgroup support for $cgroup"
-    if ! test -f "/sys/fs/cgroup/$cgroup/tasks" ; then
+    if ! test -f "$cg_root/$cgroup" ; then
         print_dubious
         warn "the $cgroup is not present. isolate --cg cannot be used."
     fi
     print_finish
 }
-cgroup_check memory
-cgroup_check cpuacct
-cgroup_check cpuset
+
+# Check that cgroups are enabled.
+if [ -z "$cg_root" ] ; then
+    warn "cgroup root not found. isolate --cg cannot be used."
+    exit_status=1
+else
+   quiet || echo "Using cgroup root: $cg_root"
+   cgroup_check cpuset.cpus
+   cgroup_check cpuset.mems
+   cgroup_check cpu.stat
+   cgroup_check cgroup.procs
+   cgroup_check memory.events
+   cgroup_check memory.max
+fi
 
 # Check that swap is either disabled or accounted for.
 swap_check() {
@@ -130,9 +160,8 @@ swap_check() {
     local swaps
     swaps=$(swapon --noheadings)
     if [ -n "$swaps" ] ; then
-        # Swap is enabled.  We had better have the memsw support in the memory
-        # cgroup.
-        if ! test -f "/sys/fs/cgroup/memory/memory.memsw.usage_in_bytes" ; then
+        # Swap is enabled.  We had better have the memory.swap support in the memory cgroup.
+        if ! test -f "$cg_root/memory.swap.current" ; then
             print_fail
             action \
                 "swap is enabled, but swap accounting is not. isolate will not be able to enforce memory limits." \
