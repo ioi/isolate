@@ -4,5 +4,3 @@
 - but still allow to configure maximum number of sandboxes
   less than the size of the range, so that CPU / node
   restrictions cannot be bypassed
-
-- reference the grader security paper
