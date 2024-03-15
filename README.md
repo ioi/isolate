@@ -31,6 +31,9 @@ To compile Isolate, you need:
 
   - headers for the libsystemd library (libsystemd-dev package) for compilation
     of isolate-cg-keeper
+    
+  - Additionally, you'll need pkg-config for managing library-specific compilation flags.
+
 
 You may need `a2x` (found in [AsciiDoc](https://asciidoc-py.github.io/a2x.1.html)) for building manual.
 But if you only want the isolate binary, you can just run `make isolate`
