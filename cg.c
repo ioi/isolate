@@ -10,6 +10,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -42,7 +43,7 @@ cg_read(const char *attr, char *buf)
       maybe = 1;
     }
 
-  char path[256];
+  char path[PATH_MAX];
   cg_makepath(path, sizeof(path), attr);
 
   int fd = open(path, O_RDONLY);
@@ -97,7 +98,7 @@ cg_write(const char *attr, const char *fmt, ...)
   if (verbose > 1)
     msg("CG: Write %s = %s", attr, buf);
 
-  char path[256];
+  char path[PATH_MAX];
   cg_makepath(path, sizeof(path), attr);
 
   int fd = open(path, O_WRONLY | O_TRUNC);
@@ -128,7 +129,7 @@ fail:
 
 static FILE *cg_fopen(const char *attr)
 {
-  char path[256];
+  char path[PATH_MAX];
   cg_makepath(path, sizeof(path), attr);
 
   FILE *f = fopen(path, "r");
@@ -208,7 +209,7 @@ cg_prepare(void)
     return;
 
   struct stat st;
-  char path[256];
+  char path[PATH_MAX];
 
   cg_makepath(path, sizeof(path), NULL);
   if (stat(path, &st) >= 0 || errno != ENOENT)
@@ -305,7 +306,7 @@ cg_remove(void)
   if (!cg_enable)
     return;
 
-  char path[256];
+  char path[PATH_MAX];
   cg_makepath(path, sizeof(path), NULL);
 
   if (dir_exists(path))
