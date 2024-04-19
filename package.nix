@@ -25,15 +25,14 @@ stdenv.mkDerivation {
     # systemdLibs.dev
   ];
 
-  buildFlags = [
-    "--trace"
-  ];
+  buildFlags = [ ];
 
   installPhase = ''
     runHook preInstall
 
     install -Dm755 ./isolate $out/bin/isolate
     install -Dm755 ./isolate-cg-keeper $out/bin/isolate-cg-keeper
+    install -Dm644 ./systemd/* -t $out/lib/systemd/system/
     installManPage isolate.1
 
     runHook postInstall

@@ -5,6 +5,7 @@
  */
 
 #include "isolate.h"
+#include "sd_notify.h"
 
 #include <fcntl.h>
 #include <stdio.h>
@@ -12,7 +13,6 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
-#include <systemd/sd-daemon.h>
 
 void NONRET __attribute__((format(printf,1,2)))
 die(char *msg, ...)
@@ -122,7 +122,7 @@ main(int argc UNUSED, char **argv UNUSED)
 {
   cf_parse();
   setup_cg();
-  sd_notify(0, "READY=1");
+  notify_ready();
   for (;;)
     pause();
 }
