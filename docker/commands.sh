@@ -2,21 +2,21 @@
 
 set -e
 
-QUIET=false
-IGNORE_CHECK=false
+QUIET=true
+SKIP_CHECK=true
 ISOLATE_CHECK_EXECUTE=false
 for arg in "$@"; do
     if [ "$arg" == "--help" ]; then
-        echo "Usage: isolate [--quiet] [--ignore-check] [--execute-patches] [--help]"
-        echo "  --quiet: Suppress outputs"
-        echo "  --ignore-check: Do not fail if not properly setup"
+        echo "Usage: [--verbose] [--strict-check] [--execute-patches] [--help]"
+        echo "  --verbose: Print every thing"
+        echo "  --strict-check: Fail if patches not applied properly."
         echo "  --execute-patches: Run isolate-check-environment --execute --quiet. Increases reproducibility."
         echo "  --help: Show this help message"
         break
-    elif [ "$arg" == "--quiet" ]; then
-        QUIET=true
-    elif [ "$arg" == "--ignore-check" ]; then
-        IGNORE_CHECK=true
+    elif [ "$arg" == "--verbose" ]; then
+        QUIET=false
+    elif [ "$arg" == "--strict-check" ]; then
+        SKIP_CHECK=false
     elif [ "$arg" == "--execute-patches" ]; then
         ISOLATE_CHECK_EXECUTE=true
     fi
@@ -30,21 +30,15 @@ print() {
 
 if [ $ISOLATE_CHECK_EXECUTE = true ]; then
     print "Running isolate-check-environment --execute --quiet"
-    isolate-check-environment --execute --quiet || true
+    isolate-check-environment --execute --quiet > /dev/null 2> /dev/null || true
 fi
 
-print "Rechecking environment"
-if [ $IGNORE_CHECK = true ]; then
-    print "Ignoring check"
-    if [ $QUIET = true ]; then
-        isolate-check-environment --quiet || true
-    else
-        isolate-check-environment || true
-    fi
+if [ $SKIP_CHECK = true ]; then
+    print "Skipping check"
 else
-    print "Fail if not properly set up."
+    print "Rechecking environment. Fail if not properly set up."
     if [ $QUIET = true ]; then
-        isolate-check-environment --quiet
+        isolate-check-environment --quiet > /dev/null 2> /dev/null
     else
         isolate-check-environment
     fi
