@@ -7,6 +7,7 @@ SKIP_CHECK=true
 ISOLATE_CHECK_EXECUTE=false
 for arg in "$@"; do
     if [ "$arg" == "--help" ]; then
+        echo "$(basename "$0")"
         echo "Usage: [--verbose] [--strict-check] [--execute-patches] [--help]"
         echo "  --verbose: Print every thing"
         echo "  --strict-check: Fail if patches not applied properly."

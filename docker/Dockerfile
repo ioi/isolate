@@ -23,11 +23,10 @@ COPY . .
 # Compile elements
 RUN make isolate isolate-check-environment isolate-cg-keeper
 RUN make DESTDIR=/build install -o *
+COPY docker/start_isolate.sh /build/usr/local/sbin/start_isolate
 
 # Step 3: Final image
 FROM base-ubuntu
-
-WORKDIR /isolate
 
 # Isolate dependencies
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
@@ -37,7 +36,5 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
 # Install isolate
 COPY --from=build /build/ /
 
-COPY docker/commands.sh .
-
 # Pass all arguments to isolate-check-environment
-ENTRYPOINT ["/isolate/commands.sh", "--execute"]
+ENTRYPOINT ["start_isolate"]
