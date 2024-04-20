@@ -37,4 +37,4 @@ fi
 
 # Run isolate daemon
 print "Running isolate daemon"
-nohup isolate-cg-keeper
+exec isolate-cg-keeper
