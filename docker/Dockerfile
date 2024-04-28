@@ -32,6 +32,10 @@ FROM base-ubuntu
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get install -y libcap-dev libsystemd-dev
+    
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y lsof
 
 # Install isolate
 COPY --from=build /build/ /

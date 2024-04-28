@@ -95,7 +95,25 @@ write_auto_cgroup(char *file, char *cg)
 }
 
 static void
-setup_cg(void)
+move_cg_threadgroups(char *src, char *dest)
+{
+  char src_filename[1024];
+  snprintf(src_filename, sizeof(src_filename), "%s/cgroup.procs", src);
+
+  char dest_filename[1024];
+  snprintf(dest_filename, sizeof(dest_filename), "%s/cgroup.procs", dest);
+
+  FILE *f = fopen(src_filename, "r");
+  if (!f)
+    die("Cannot open %s: %m", src_filename);
+
+  char pid[1024];
+  while (fgets(pid, sizeof(pid), f))
+    write_cg_attr(dest, "cgroup.procs", "%s\n", pid);
+}
+
+static void
+setup_cg(bool move_cg_neighbors)
 {
   char *cg = cf_cg_root;
   if (strlen(cf_cg_root) > 5 && !memcmp(cf_cg_root, "auto:", 5))
@@ -114,14 +132,27 @@ setup_cg(void)
     die("Cannot create subgroup %s: %m", subgroup);
 
   write_cg_attr(cg, "daemon/cgroup.procs", "%d\n", (int) getpid());
+  if (move_cg_neighbors)
+    move_cg_threadgroups(cg, subgroup);
   write_cg_attr(cg, "cgroup.subtree_control", "+cpuset +memory\n");
 }
 
 int
-main(int argc UNUSED, char **argv UNUSED)
+main(int argc, char **argv)
 {
+  bool move_cg_neighbors = false;
+  if (argc == 2){
+    if (!strcmp(argv[1], "--move-cg-neighbors") && !strcmp(argv[1], "-m")){
+      die("Usage: %s [--move-cg-neighbors|-m]", argv[0]);
+    }
+    move_cg_neighbors = true;
+  }
+  else if (argc > 2){
+    die("Usage: %s [--move-cg-neighbors|-m]", argv[0]);
+  }
+
   cf_parse();
-  setup_cg();
+  setup_cg(move_cg_neighbors);
   sd_notify(0, "READY=1");
   for (;;)
     pause();

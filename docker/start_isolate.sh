@@ -37,4 +37,4 @@ fi
 
 # Run isolate daemon
 print "Running isolate daemon"
-exec isolate-cg-keeper
+isolate-cg-keeper --move-cg-neighbors
