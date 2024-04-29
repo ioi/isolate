@@ -4,7 +4,6 @@
 
 all: isolate isolate.1 isolate.1.html isolate-check-environment isolate-cg-keeper
 
-CC=gcc
 CFLAGS=-std=gnu99 -Wall -Wextra -Wno-parentheses -Wno-unused-result -Wno-missing-field-initializers -Wstrict-prototypes -Wmissing-prototypes -D_GNU_SOURCE
 LIBS=-lcap
 
@@ -25,21 +24,17 @@ MANDIR = $(DATADIR)/man
 MAN1DIR = $(MANDIR)/man1
 BOXDIR = $(VARPREFIX)/lib/isolate
 
-SYSTEMD_CFLAGS := $(shell pkg-config libsystemd --cflags)
-SYSTEMD_LIBS := $(shell pkg-config libsystemd --libs)
-
 isolate: isolate.o util.o rules.o cg.o config.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
 
-isolate-cg-keeper: isolate-cg-keeper.o config.o util.o
-	$(CC) $(LDFLAGS) -o $@ $^ $(SYSTEMD_LIBS)
+isolate-cg-keeper: isolate-cg-keeper.o config.o util.o sd_notify.o
+	$(CC) $(LDFLAGS) -o $@ $^ 
 
 %.o: %.c isolate.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 isolate.o: CFLAGS += -DVERSION='"$(VERSION)"' -DYEAR='"$(YEAR)"' -DBUILD_DATE='"$(BUILD_DATE)"' -DBUILD_COMMIT='"$(BUILD_COMMIT)"'
 config.o: CFLAGS += -DCONFIG_FILE='"$(CONFIG)"'
-isolate-cg-keeper.o: CFLAGS += $(SYSTEMD_CFLAGS)
 
 isolate.1: isolate.1.txt
 	a2x -f manpage $<
