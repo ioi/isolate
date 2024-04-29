@@ -1,0 +1,27 @@
+# syntax=docker/dockerfile:1
+
+# Step 1: Build isolate
+FROM alpine:3.19.1 AS build
+
+WORKDIR /isolate
+
+RUN apk add --no-cache gcc g++ make libcap-dev
+
+COPY . .
+
+# Compile elements
+RUN make isolate isolate-check-environment isolate-cg-keeper
+RUN make DESTDIR=/build install -o *
+COPY docker/start_isolate.sh /build/usr/local/sbin/start_isolate
+
+# Step 3: Final image
+FROM alpine:3.19.1
+
+# Isolate dependencies
+RUN apk add --no-cache libcap-dev
+
+# Install isolate
+COPY --from=build /build/ /
+
+# Pass all arguments to isolate-check-environment
+ENTRYPOINT ["start_isolate"]

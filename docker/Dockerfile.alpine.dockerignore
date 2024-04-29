@@ -1,0 +1,18 @@
+docker/Dockerfile
+docker/Dockerfile.dockerignore
+systemd
+.gitignore
+.travis.yml
+isolate.1.txt
+LICENSE
+NEWS
+README.md
+TODO
+
+# .gitignore
+docbook-xsl.css
+isolate
+isolate.1
+isolate.1.html
+isolate-cg-keeper
+*.o

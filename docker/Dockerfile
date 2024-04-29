@@ -16,7 +16,7 @@ WORKDIR /isolate
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get install -y tzdata && \
-    apt-get install -y build-essential libcap-dev pkg-config libsystemd-dev
+    apt-get install -y build-essential libcap-dev pkg-config
 
 COPY . .
 
@@ -31,11 +31,7 @@ FROM base-ubuntu
 # Isolate dependencies
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    apt-get install -y libcap-dev libsystemd-dev
-    
-RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    apt-get update && apt-get install -y lsof
+    apt-get install -y libcap-dev
 
 # Install isolate
 COPY --from=build /build/ /
