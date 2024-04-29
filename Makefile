@@ -23,6 +23,7 @@ DATADIR = $(DATAROOTDIR)
 MANDIR = $(DATADIR)/man
 MAN1DIR = $(MANDIR)/man1
 BOXDIR = $(VARPREFIX)/lib/isolate
+SYSTEMDUNITDIR = $(DESTDIR)/etc/systemd/system
 
 isolate: isolate.o util.o rules.o cg.o config.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(LIBS)
@@ -60,6 +61,11 @@ install: isolate isolate-check-environment isolate-cg-keeper
 install-doc: isolate.1
 	install -d $(MAN1DIR)
 	install -m 644 $< $(MAN1DIR)/$<
+
+install-systemd-units: isolate-cg-keeper
+	install -d $(SYSTEMDUNITDIR)
+	install -m 644 systemd/* $(SYSTEMDUNITDIR)
+	systemctl daemon-reload
 
 release: isolate.1.html
 	git tag v$(VERSION)
