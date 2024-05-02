@@ -35,6 +35,11 @@ if [ $ISOLATE_CHECK_EXECUTE = true ]; then
     fi
 fi
 
+if [ ! -w /sys/fs/cgroup ]; then
+    print "Remounting /sys/fs/cgroup"
+    mount -o remount,rw /sys/fs/cgroup/
+fi
+
 # Run isolate daemon
 print "Running isolate daemon"
 isolate-cg-keeper --move-cg-neighbors
