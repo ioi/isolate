@@ -38,6 +38,10 @@ Use `docker exec` to trigger `isolate` runs (refer to the man page for additiona
 
 In your resulting image, install libcap (usually available as `libcap` and/or `libcap-dev`) and run the daemon with either `isolate-cg-keeper --move-cg-neighbors` or `start_isolate` (note that both will be blocking).
 
+### Permissions
+
+Privileges could be granted to the container in a more fine-grained manner. Practically, the container needs only `CAP_SYS_ADMIN` (for remounting cgroups as read-write) and `CAP_NET_ADMIN` (for creating sandbox network interfaces). Instead of using `--priviledged`, you could grant only these capabilities with `--cap-add CAP_SYS_ADMIN --cap-add CAP_NET_ADMIN`.
+
 ## Building from source
 
 ### Installation
