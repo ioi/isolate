@@ -1,5 +1,4 @@
-isolate
-=======
+# isolate
 
 Isolate is a sandbox built to safely run untrusted executables, like
 programs submitted by competitors in a programming contest. Isolate
@@ -25,17 +24,44 @@ in the Olympiads in Informatics journal.
 Also, Isolate's [manual page](http://www.ucw.cz/moe/isolate.1.html)
 is available online.
 
+## Quick start
+
+### Docker image
+
+The fastest way to start is grabbing the pre-built docker image at `ghcr.io/minhnhatnoe/isolate:latest`, which can be used as a standalone image or a base image.
+
+#### Standalone
+
+Run the container with the `--privileged` flag to start the daemon. Make sure you mount appropriate directories to the default mount points at `/bin`, `/lib` and `/usr` (and probably `/var/local/lib/isolate/` to put executable in the sandbox).
+
+Use `docker exec` to trigger `isolate` runs (refer to the man page for additional details). A good starting point would be `isolate --cg --init && isolate --cg --run -- <program> && isolate --cg --cleanup`.
+
+#### Base image
+
+In your resulting image, install libcap (usually available as `libcap` and/or `libcap-dev`) and run the daemon with either `isolate-cg-keeper --move-cg-neighbors` or `start_isolate` (note that both will be blocking).
+
+### From source
+
+#### Installation
+
 To compile Isolate, you need:
 
-  - pkg-config
-
-  - headers for the libcap library (usually available in a libcap-dev package)
-
-  - headers for the libsystemd library (libsystemd-dev package) for compilation
-    of isolate-cg-keeper
+- pkg-config
+- headers for the libcap library (usually available in a libcap-dev package)
+- headers for the libsystemd library (libsystemd-dev package) for compilation of isolate-cg-keeper
 
 You may need `a2x` (found in [AsciiDoc](https://asciidoc-py.github.io/a2x.1.html)) for building manual.
 But if you only want the isolate binary, you can just run `make isolate`
 
 Recommended system setup is described in sections INSTALLATION and REPRODUCIBILITY
-of the manual page.
+of the manual page. To install the systemd unit, run `make install-systemd-units`.
+
+#### Usage
+
+If your system is using systemd, run the installed unit (usually with `systemctl enable isolate --now`) and you're ready to use `isolate`.
+
+### Anatomy of isolate
+
+- `isolate-cg-keeper`: Establish the Control Group subtree for running processes and future sandboxes. Should be started before running any `isolate` and `isolate-check-environment` commands. If `isolate-cg-keeper` is not the sole process at its designated Control Group, execute with `--move-cg-neighbors` to avoid violating [Control Group v2's No Internal Process Constraint](https://docs.kernel.org/admin-guide/cgroup-v2.html#no-internal-process-constraint).
+- `isolate-check-environment`: Check current environment for sources of run-time variability and other issues. Should be run after starting `isolate-cg-keeper`. To apply recommended fixes, run with `--execute`.
+- `isolate`: The sandbox trigger. Refer to the man page for guidance.
