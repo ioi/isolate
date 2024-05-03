@@ -24,25 +24,27 @@ in the Olympiads in Informatics journal.
 Also, Isolate's [manual page](http://www.ucw.cz/moe/isolate.1.html)
 is available online.
 
-## Quick start
-
-### Docker image
+## Quick start with Docker
 
 The fastest way to start is grabbing the pre-built docker image at `ghcr.io/minhnhatnoe/isolate:latest`, which can be used as a standalone image or a base image.
 
-#### Standalone
+### Standalone
 
 Run the container with the `--privileged` flag to start the daemon. Make sure you mount appropriate directories to the default mount points at `/bin`, `/lib` and `/usr` (and probably `/var/local/lib/isolate/` to put executable in the sandbox).
 
 Use `docker exec` to trigger `isolate` runs (refer to the man page for additional details). A good starting point would be `isolate --cg --init && isolate --cg --run -- <program> && isolate --cg --cleanup`.
 
-#### Base image
+### Base image
 
 In your resulting image, install libcap (usually available as `libcap` and/or `libcap-dev`) and run the daemon with either `isolate-cg-keeper --move-cg-neighbors` or `start_isolate` (note that both will be blocking).
 
-### From source
+### Permissions
 
-#### Installation
+Privileges could be granted to the container in a more fine-grained manner. Practically, the container needs only `CAP_SYS_ADMIN` (for remounting cgroups as read-write) and `CAP_NET_ADMIN` (for creating sandbox network interfaces). Instead of using `--priviledged`, you could grant only these capabilities with `--cap-add CAP_SYS_ADMIN --cap-add CAP_NET_ADMIN`.
+
+## Building from source
+
+### Installation
 
 To compile Isolate, you need:
 
@@ -56,11 +58,11 @@ But if you only want the isolate binary, you can just run `make isolate`
 Recommended system setup is described in sections INSTALLATION and REPRODUCIBILITY
 of the manual page. To install the systemd unit, run `make install-systemd-units`.
 
-#### Usage
+### Usage
 
 If your system is using systemd, run the installed unit (usually with `systemctl enable isolate --now`) and you're ready to use `isolate`.
 
-### Anatomy of isolate
+## Anatomy of isolate
 
 - `isolate-cg-keeper`: Establish the Control Group subtree for running processes and future sandboxes. Should be started before running any `isolate` and `isolate-check-environment` commands. If `isolate-cg-keeper` is not the sole process at its designated Control Group, execute with `--move-cg-neighbors` to avoid violating [Control Group v2's No Internal Process Constraint](https://docs.kernel.org/admin-guide/cgroup-v2.html#no-internal-process-constraint).
 - `isolate-check-environment`: Check current environment for sources of run-time variability and other issues. Should be run after starting `isolate-cg-keeper`. To apply recommended fixes, run with `--execute`.
