@@ -40,7 +40,9 @@ In your resulting image, install libcap (usually available as `libcap` and/or `l
 
 ### Permissions
 
-Privileges could be granted to the container in a more fine-grained manner. Practically, the container needs only `CAP_SYS_ADMIN` (for remounting cgroups as read-write) and `CAP_NET_ADMIN` (for creating sandbox network interfaces). Instead of using `--priviledged`, you could grant only these capabilities with `--cap-add CAP_SYS_ADMIN --cap-add CAP_NET_ADMIN`.
+Privileges could be granted to the container in a more fine-grained manner. Practically, the container needs only `CAP_SYS_ADMIN` (for remounting cgroups as read-write) and `CAP_NET_ADMIN` (for creating sandbox network interfaces). Instead of using `--privileged`, you could grant only these capabilities with `--cap-add CAP_SYS_ADMIN --cap-add CAP_NET_ADMIN`.
+
+Note that `isolate-check-environment --execute` requires access to multiple other directories, so it may only be run with `--privileged`.
 
 ## Building from source
 
