@@ -31,7 +31,7 @@ FROM base-ubuntu
 # Isolate dependencies
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    apt-get install -y libcap-dev
+    apt-get install -y libcap-dev libcap2-bin
 
 # Install isolate
 COPY --from=build /build/ /
