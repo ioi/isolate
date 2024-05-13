@@ -34,7 +34,8 @@ print() {
     fi
 }
 
-if [ ! -w /sys/fs/cgroup ]; then
+# Will return 0 if rw is attribute of /sys/fs/cgroup
+if ! findmnt -O rw /sys/fs/cgroup; then
     print "/sys/fs/cgroup read-only. Remounting as read-write."
     mount -o remount,rw /sys/fs/cgroup/
 fi
