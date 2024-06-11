@@ -1,0 +1,5 @@
+isolate (2.0) stable; urgency=medium
+
+  * Initial release.
+
+ -- Martin Mares <mj@ucw.cz>  Tue, 11 Jun 2024 16:44:34 +0200

@@ -1,0 +1,9 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Source: https://github.com/ioi/isolate
+Upstream-Name: Isolate
+Upstream-Contact: Martin Mareš <mj@ucw.cz>
+
+Files:
+ *
+Copyright: 2012-2024 Martin Mareš and Bernard Blackham
+License: GPL-2+

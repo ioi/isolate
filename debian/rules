@@ -1,0 +1,21 @@
+#!/usr/bin/make -f
+
+# export DH_VERBOSE = 1
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	make all PREFIX=/usr VARPREFIX=/var CONFIGDIR=/etc
+
+override_dh_auto_install:
+	make install install-doc PREFIX=/usr VARPREFIX=/var CONFIGDIR=/etc DESTDIR=debian/isolate
+	mkdir -p debian/isolate/lib/systemd/system
+	install -m 644 systemd/isolate.slice systemd/isolate.service debian/isolate/lib/systemd/system/
+	sed -i 's@/local/@/@g' debian/isolate/lib/systemd/system/isolate.service debian/isolate/etc/isolate
+
+override_dh_fixperms:
+	dh_fixperms --exclude usr/bin/isolate
+
+override_dh_installsystemd:
+	dh_installsystemd isolate.service
