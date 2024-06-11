@@ -13,8 +13,8 @@ YEAR=2024
 BUILD_DATE:=$(shell date '+%Y-%m-%d')
 BUILD_COMMIT:=$(shell if git rev-parse >/dev/null 2>/dev/null ; then git describe --always --tags ; else echo '<unknown>' ; fi)
 
-PREFIX = $(DESTDIR)/usr/local
-VARPREFIX = $(DESTDIR)/var/local
+PREFIX = /usr/local
+VARPREFIX = /var/local
 CONFIGDIR = $(PREFIX)/etc
 CONFIG = $(CONFIGDIR)/isolate
 BINDIR = $(PREFIX)/bin
@@ -56,15 +56,15 @@ clean:
 	rm -f docbook-xsl.css
 
 install: isolate isolate-check-environment isolate-cg-keeper
-	install -d $(BINDIR) $(SBINDIR) $(BOXDIR) $(CONFIGDIR)
-	install isolate-check-environment $(BINDIR)
-	install isolate-cg-keeper $(SBINDIR)
-	install -m 4755 isolate $(BINDIR)
-	install -m 644 default.cf $(CONFIG)
+	install -d $(DESTDIR)$(BINDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(BOXDIR) $(DESTDIR)$(CONFIGDIR)
+	install isolate-check-environment $(DESTDIR)$(BINDIR)
+	install isolate-cg-keeper $(DESTDIR)$(SBINDIR)
+	install -m 4755 isolate $(DESTDIR)$(BINDIR)
+	install -m 644 default.cf $(DESTDIR)$(CONFIG)
 
 install-doc: isolate.1
-	install -d $(MAN1DIR)
-	install -m 644 $< $(MAN1DIR)/$<
+	install -d $(DESTDIR)$(MAN1DIR)
+	install -m 644 $< $(DESTDIR)$(MAN1DIR)/$<
 
 release: isolate.1.html
 	git tag v$(VERSION)
