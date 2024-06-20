@@ -73,4 +73,7 @@ release: isolate.1.html
 	rsync isolate.1.html jw:/var/www/moe/
 	ssh jw 'cd web && bin/release-prog isolate $(VERSION)'
 
+builddeb: isolate isolate.1 isolate-check-environment isolate-cg-keeper
+	dpkg-buildpackage -us -uc -tc -b
+
 .PHONY: all clean install install-doc release
