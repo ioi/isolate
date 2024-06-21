@@ -51,10 +51,17 @@ done
 
 # Some helper boilerplate machinery.
 exit_status=0
-red=$(tput setaf 1)
-green=$(tput setaf 2)
-yellow=$(tput setaf 3)
-normal=$(tput sgr0)
+if [ -n "$TERM" -a "$TERM" != dumb ] ; then
+	red=$(tput setaf 1)
+	green=$(tput setaf 2)
+	yellow=$(tput setaf 3)
+	normal=$(tput sgr0)
+else
+	red=
+	green=
+	yellow=
+	normal=
+fi
 
 # Return true (0) if we are being quiet.
 quiet() {
