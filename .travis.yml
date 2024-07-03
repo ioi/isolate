@@ -15,3 +15,4 @@ addons:
 script:
   - make DESTDIR=/tmp/isolate
   - make DESTDIR=/tmp/isolate install
+  - make builddeb
