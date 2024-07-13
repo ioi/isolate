@@ -15,7 +15,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update -y 
-          sudo apt install -y pkg-config libpcap-dev libsystemd-dev asciidoc
+          sudo apt install -y pkg-config libcap-dev libpcap-dev libsystemd-dev asciidoc
       - name: Build debian package
         run: |
           make
