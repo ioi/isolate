@@ -61,7 +61,6 @@ jobs:
             *)
               echo "Not setting prerelease flag"
               ;;
-            echo
           esac
       - name: Release
         run: |
