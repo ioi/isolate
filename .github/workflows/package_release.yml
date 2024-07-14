@@ -23,12 +23,16 @@ jobs:
         run: |
           make
           dpkg-buildpackage -us -uc -tc -b
+      - name: Place artifacts in a folder
+        run: |
+          mkdir artifacts
+          mv ../isolate-*_amd64.deb artifacts
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: artifact
+          name: artifacts
           path: |
-            ./../isolate-*_amd64.deb
+            ./artifacts/*.deb
           if-no-files-found: error
           retention-days: 1
   publish:
