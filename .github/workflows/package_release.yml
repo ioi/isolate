@@ -1,6 +1,9 @@
 name: package_release
 
 on:
+  push:
+    branches:
+      - dev-gh-actions-01
   workflow_dispatch:
     inputs:
       tag_name:
