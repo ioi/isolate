@@ -26,7 +26,7 @@ jobs:
       - name: Place artifacts in a folder
         run: |
           mkdir artifacts
-          mv ../isolate-*_amd64.deb artifacts
+          mv ../isolate_*_amd64.deb artifacts
       - name: Upload artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -67,4 +67,4 @@ jobs:
         run: |
           echo "Publishing to github"
           gh release create ${PRERELEASE_FLAG} "$TAG_NAME" || echo "Release creation failed, but continuing..." && true
-          gh release upload --clobber "$TAG_NAME" artifacts/isolate-*_amd64.deb
+          gh release upload --clobber "$TAG_NAME" artifacts/isolate_*_amd64.deb
