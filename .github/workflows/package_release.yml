@@ -3,7 +3,7 @@ name: package_release
 on:
   workflow_dispatch:
     inputs:
-      tagName:
+      tag_name:
         description: Tag Name
         required: false
         default: unstable
@@ -49,7 +49,7 @@ jobs:
         uses: actions/download-artifact@v3
       - name: Set tag name
         if: github.event_name == 'workflow_dispatch'
-        run: echo "TAG_NAME=${{ github.events.inputs.tagName }}" >> $GITHUB_ENV
+        run: echo "TAG_NAME=${{ github.events.inputs.tag_name }}" >> $GITHUB_ENV
       - name: Prerelease flag
         run: |
           PRERELEASE_FLAG=""
