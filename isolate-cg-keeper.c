@@ -51,9 +51,6 @@ write_cg_attr(const char *cg_root, const char *name, const char *fmt, ...)
 static char *
 get_my_cgroup(void)
 {
-  if (!(strlen(cf_cg_root) > 5 && !memcmp(cf_cg_root, "auto:", 5)))
-    return cf_cg_root;
-
   FILE *f = fopen("/proc/self/cgroup", "r");
   if (!f)
     die("Cannot open /proc/self/cgroup: %m");
