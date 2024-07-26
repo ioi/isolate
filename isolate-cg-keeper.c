@@ -1,7 +1,7 @@
 /*
  *	A Trivial Helper Daemon for Keeping Control Groups in SystemD
  *
- *	(c) 2022--2023 Martin Mares <mj@ucw.cz>
+ *	(c) 2022--2024 Martin Mares <mj@ucw.cz>
  */
 
 #include "isolate.h"
@@ -13,6 +13,8 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <systemd/sd-daemon.h>
+
+#define CGROUP_FS "/sys/fs/cgroup"
 
 void NONRET __attribute__((format(printf,1,2)))
 die(char *msg, ...)
@@ -48,6 +50,21 @@ write_cg_attr(const char *cg_root, const char *name, const char *fmt, ...)
   va_end(args);
 }
 
+static void
+check_cgroup_fs(void)
+{
+  struct stat st;
+
+  if (stat(CGROUP_FS, &st) < 0)
+    die("Cannot find %s: %m", CGROUP_FS);
+
+  if (stat(CGROUP_FS "/unified", &st) >= 0)
+    die("Combined cgroup v1+v2 mode is not supported");
+
+  if (stat(CGROUP_FS "/cgroup.subtree_control", &st) < 0)
+    die("Cgroup v2 not found");
+}
+
 static char *
 get_my_cgroup(void)
 {
@@ -66,7 +83,7 @@ get_my_cgroup(void)
 	line[--len] = 0;
       if (line[0] == '0' && line[1] == ':' && line[2] == ':')
 	{
-	  cg = xsprintf("/sys/fs/cgroup%s", line + 3);
+	  cg = xsprintf(CGROUP_FS "%s", line + 3);
 	  break;
 	}
     }
@@ -97,6 +114,7 @@ setup_cg(void)
   char *cg = cf_cg_root;
   if (strlen(cf_cg_root) > 5 && !memcmp(cf_cg_root, "auto:", 5))
     {
+      check_cgroup_fs();
       cg = get_my_cgroup();
       write_auto_cgroup(cf_cg_root + 5, cg);
     }
