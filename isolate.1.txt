@@ -372,12 +372,13 @@ file, by default located in /usr/local/etc/isolate.
 For control group mode:
 
 - Linux supports two incompatible implementations of control groups: cgroup v1 and v2.
-  This version of Isolate requires v2, which is the default on recent systems).
+  This version of Isolate requires v2, which is the default on recent systems.
 
 - Make sure that Isolate's configuration file refers to the correct location where
   you have the cgroup filesystem mounted.
 
-- If you are using systemd, you need to start the `isolate.service`. It establishes
+- If you are using systemd, you need to start the `isolate.service` (see service files
+  in the `systemd` directory in Isolate's source tree). It establishes
   `isolate.scope` whose cgroup subtree is delegated to Isolate by systemd.
   The service runs a simple daemon `isolate-cg-keeper` to keep the scope alive.
 

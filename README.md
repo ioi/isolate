@@ -27,6 +27,8 @@ is available online.
 
 To compile Isolate, you need:
 
+  - pkg-config
+
   - headers for the libcap library (usually available in a libcap-dev package)
 
   - headers for the libsystemd library (libsystemd-dev package) for compilation
