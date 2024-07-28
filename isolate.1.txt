@@ -374,13 +374,21 @@ For control group mode:
 - Linux supports two incompatible implementations of control groups: cgroup v1 and v2.
   This version of Isolate requires v2, which is the default on recent systems.
 
-- Make sure that Isolate's configuration file refers to the correct location where
-  you have the cgroup filesystem mounted.
-
 - If you are using systemd, you need to start the `isolate.service` (see service files
   in the `systemd` directory in Isolate's source tree). It establishes
   `isolate.scope` whose cgroup subtree is delegated to Isolate by systemd.
   The service runs a simple daemon `isolate-cg-keeper` to keep the scope alive.
+
+- If you are not using systemd, make sure that Isolate's configuration file
+  refers to the correct location where you have the cgroup filesystem mounted.
+  Also make sure that whatever service manager you are using, it does not
+  interfere with Isolate's use of control groups.
+
+- Running Isolate in containers is not recommended, since container managers
+  usually do not delegate control groups properly. Besides, you do not want
+  to share the machine with other workloads, which would influence measurement
+  of execution time. If you still want to use containers, you are on your own
+  and you probably have to make them privileged.
 
 - Reporting memory usage requires Linux kernel 5.19 or newer.
 
