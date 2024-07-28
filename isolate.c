@@ -961,7 +961,7 @@ init(void)
   if (chown("box", orig_uid, orig_gid) < 0)
     die("Cannot chown box: %m");
 
-  cg_prepare();
+  cg_create();
   set_quota();
 
   lock.is_initialized = 1;

@@ -203,7 +203,7 @@ cg_init(void)
 }
 
 void
-cg_prepare(void)
+cg_create(void)
 {
   if (!cg_enable)
     return;

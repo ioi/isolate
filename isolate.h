@@ -60,14 +60,23 @@ void apply_dir_rules(int with_defaults);
 
 void set_quota(void);
 
-/* cg.c */
+/* cg.c (without cg_enable, these functions do nothing) */
 
+// Initialize CG machinery
 void cg_init(void);
-void cg_prepare(void);
+
+// Create a new CG for the box (during isolate --init)
+void cg_create(void);
+
+// Destroy the box CG (during isolate --cleanup)
+void cg_remove(void);
+
+// Move the current process to the box CG
 void cg_enter(void);
+
+// Obtain statistics on the box CG
 int cg_get_run_time_ms(void);
 void cg_stats(void);
-void cg_remove(void);
 
 /* config.c */
 
