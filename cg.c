@@ -1,7 +1,7 @@
 /*
  *	Process Isolator -- Control Groups
  *
- *	(c) 2012-2023 Martin Mares <mj@ucw.cz>
+ *	(c) 2012-2024 Martin Mares <mj@ucw.cz>
  *	(c) 2012-2014 Bernard Blackham <bernard@blackham.com.au>
  */
 
@@ -246,12 +246,9 @@ cg_enter(void)
     cg_write("cpuset.mems", "%s", cf->mems);
 }
 
-int
-cg_get_run_time_ms(void)
+static int
+raw_get_run_time_ms(void)
 {
-  if (!cg_enable)
-    return 0;
-
   FILE *f = cg_fopen("cpu.stat");
   unsigned long long usec = 0;
   bool found_usage = false;
@@ -271,6 +268,33 @@ cg_get_run_time_ms(void)
     die("Missing usage_usec in cpu.stat");
 
   return usec / 1000;
+}
+
+static int cg_time_offset;
+
+int
+cg_get_run_time_ms(void)
+{
+  if (!cg_enable)
+    return 0;
+
+  return raw_get_run_time_ms() - cg_time_offset;
+}
+
+void
+cg_setup(void)
+{
+  if (!cg_enable)
+    return;
+
+  /*
+   *  The box CG can be used by multiple invocations of "isolate --run",
+   *  but cpu.stat is cummulative and cannot be reset. So we subtract
+   *  the initial value of cpu.stat.
+   */
+  cg_time_offset = raw_get_run_time_ms();
+  if (verbose > 1)
+    msg("CG: Time offset = %d", cg_time_offset);
 }
 
 void

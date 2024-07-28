@@ -1050,6 +1050,7 @@ run(char **argv)
   setup_pipe(error_pipes, 1);
   setup_pipe(status_pipes, 0);
   setup_signals();
+  cg_setup();
 
   proxy_pid = clone(
     box_proxy,			// Function to execute as the body of the new process

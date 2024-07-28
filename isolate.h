@@ -1,7 +1,7 @@
 /*
  *	Process Isolator
  *
- *	(c) 2012-2023 Martin Mares <mj@ucw.cz>
+ *	(c) 2012-2024 Martin Mares <mj@ucw.cz>
  *	(c) 2012-2014 Bernard Blackham <bernard@blackham.com.au>
  */
 
@@ -70,6 +70,9 @@ void cg_create(void);
 
 // Destroy the box CG (during isolate --cleanup)
 void cg_remove(void);
+
+// Prepare the box CG for use (during isolate --run)
+void cg_setup(void);
 
 // Move the current process to the box CG
 void cg_enter(void);
