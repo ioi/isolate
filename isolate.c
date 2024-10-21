@@ -93,6 +93,7 @@ static bool special_files;
 static bool wait_if_busy;
 static int as_uid = -1;
 static int as_gid = -1;
+static int no_reset = 0;
 
 int cg_enable;
 int cg_memory_limit;
@@ -948,6 +949,10 @@ init(void)
   if (cf_restricted_init && !invoked_by_root)
     die("New sandboxes can be created only by root");
 
+  if (no_reset == 1 && dir_exists(box_dir)) {
+    die("Box already exists, run `%s --cleanup' first", self_name());
+  }
+
   lock_box(true);
 
   do_cleanup();
@@ -1168,6 +1173,7 @@ enum opt_code {
   OPT_AS_UID,
   OPT_AS_GID,
   OPT_PRINT_CG_ROOT,
+  OPT_NO_RESET,
 };
 
 static const char short_opts[] = "b:c:d:DeE:f:i:k:m:M:n:o:p::q:r:st:vw:x:";
@@ -1191,6 +1197,7 @@ static const struct option long_opts[] = {
   { "init",		0, NULL, OPT_INIT },
   { "mem",		1, NULL, 'm' },
   { "meta",		1, NULL, 'M' },
+  { "no-reset",		0, NULL, OPT_NO_RESET },
   { "processes",	2, NULL, 'p' },
   { "quota",		1, NULL, 'q' },
   { "run",		0, NULL, OPT_RUN },
@@ -1359,6 +1366,9 @@ main(int argc, char **argv)
 	break;
       case OPT_AS_GID:
 	as_gid = opt_uint(optarg);
+	break;
+	    case OPT_NO_RESET:
+	no_reset = 1;
 	break;
       default:
 	usage(NULL);
