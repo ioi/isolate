@@ -1129,6 +1129,7 @@ Options:\n\
     --inherit-fds\tInherit all file descriptors of the parent process\n\
 -m, --mem=<size>\tLimit address space to <size> KB\n\
 -M, --meta=<file>\tOutput process information to <file> (name:value)\n\
+    --no-reset\t\tPrevent destroy if box already exist\n\
 -n, --open-files=<max>\tLimit number of open files to <max> (default: 64, 0=unlimited)\n\
 -q, --quota=<blk>,<ino>\tSet disk quota to <blk> blocks and <ino> inodes\n\
     --share-net\t\tShare network namespace with the parent process\n\
