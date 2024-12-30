@@ -171,12 +171,13 @@ cpufreq_check() {
     anycpus=
     # Ensure cpufreq governor is set to performance on all CPUs
     for cpufreq_file in $(find /sys/devices/system/cpu/cpufreq/ -name scaling_governor) ; do
-        policy=$(cat $cpufreq_file)
-        if [ "$policy" != "performance" ] ; then
-            print_fail
-            action \
-                "cpufreq governor set to '$policy', but 'performance' would be better" \
-                "echo performance > $cpufreq_file"
+        if policy=$(cat $cpufreq_file 2>/dev/null) ; then
+            if [ "$policy" != "performance" ] ; then
+                print_fail
+                action \
+                    "cpufreq governor set to '$policy', but 'performance' would be better" \
+                    "echo performance > $cpufreq_file"
+            fi
         fi
         anycpus=1
     done
