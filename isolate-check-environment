@@ -164,6 +164,30 @@ swap_check() {
 }
 swap_check
 
+# Check that SMT is disabled.
+smt_check() {
+    print_start_check "simultaneous multithreading"
+    local val
+    if val="$(cat /sys/devices/system/cpu/smt/active 2>/dev/null)" ; then
+        if [ "$val" -ne 0 ] ; then
+            print_fail
+
+            val="$(cat /sys/devices/system/cpu/smt/control)"
+            if [ "$val" != "notimplemented" ] ; then
+                action \
+                    "simultaneous multithreading is enabled." \
+                    "echo off > /sys/devices/system/cpu/smt/control"
+            else
+                warn "SMT is enabled, but runtime SMT toggling is not supported. Add 'nosmt=1' to the kernel command line."
+            fi
+        fi
+    else
+        print_skipped
+    fi
+    print_finish
+}
+smt_check
+
 # Check that CPU frequency scaling is disabled.
 cpufreq_check() {
     print_start_check "CPU frequency scaling"
