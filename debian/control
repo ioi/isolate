@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Martin Mareš <mj@ucw.cz>
 Standards-Version: 4.6.0.1
 Build-Depends: debhelper (>= 13.0), debhelper-compat (= 13),
-	pkg-config, libpcap-dev, libsystemd-dev, asciidoc
+	pkg-config, libcap-dev, libsystemd-dev, asciidoc
 
 Package: isolate
 Architecture: any
