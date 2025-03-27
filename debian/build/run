@@ -1,0 +1,36 @@
+#!/bin/bash
+set -e
+
+buildpkg ()
+{
+	SUITE=$1
+	IMAGE=isolate-build-$SUITE
+	BDIR=build-tmp-$SUITE
+
+	echo "### Building packages for $SUITE"
+
+	echo "# Updating container"
+	podman build --file container-$SUITE --tag $IMAGE
+
+	echo "# Creating build directory"
+	rm -rf $BDIR
+	mkdir -p $BDIR
+	cp do-build $BDIR/
+	( cd ../.. && git archive --prefix=isolate/ HEAD ) | ( cd $BDIR && tar x )
+
+	echo "# Building"
+	podman run -it --rm --volume ./$BDIR:/build --workdir /build $IMAGE ./do-build
+
+	echo "# Publishing packages"
+	rsync $BDIR/*.deb jw:/projects/isolate/www/debian/dists/$SUITE-isolate/main/binary-amd64/
+
+	echo "# Cleaning up"
+	rm -rf $BDIR
+}
+
+buildpkg bookworm
+
+echo "### Updating package index"
+ssh jw 'cd /projects/isolate/debian && ./genpkg'
+
+echo "### Done"
