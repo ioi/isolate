@@ -22,7 +22,7 @@ If you are interested in more details, please read Martin's and Bernard's
 papers on [Isolate's design](https://mj.ucw.cz/papers/isolate.pdf) and
 [grading system security](https://mj.ucw.cz/papers/secgrad.pdf) published
 in the Olympiads in Informatics journal.
-Also, Isolate's [manual page](http://www.ucw.cz/moe/isolate.1.html)
+Also, Isolate's [manual page](http://www.ucw.cz/isolate/isolate.1.html)
 is available online.
 
 To compile Isolate, you need:
