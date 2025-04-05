@@ -25,6 +25,8 @@ in the Olympiads in Informatics journal.
 Also, Isolate's [manual page](http://www.ucw.cz/isolate/isolate.1.html)
 is available online.
 
+## Installing Isolate
+
 To compile Isolate, you need:
 
   - pkg-config
@@ -39,3 +41,18 @@ But if you only want the isolate binary, you can just run `make isolate`
 
 Recommended system setup is described in sections INSTALLATION and REPRODUCIBILITY
 of the manual page.
+
+## Debian packages
+
+Isolate is also available as packages for stable Debian Linux. To use them,
+add the following to your `/etc/apt/sources.list`:
+
+    deb [arch=amd64 signed-by=/etc/apt/keyrings/isolate.asc] http://www.ucw.cz/isolate/debian/ bookworm-isolate main
+
+You also need to install the repository's public key:
+
+    curl https://www.ucw.cz/isolate/debian/signing-key.asc >/dev/apt/keyrings/isolate.asc
+
+Then invoke:
+
+    apt update && apt install isolate
