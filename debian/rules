@@ -6,7 +6,7 @@
 	dh $@
 
 override_dh_auto_build:
-	make all PREFIX=/usr VARPREFIX=/var CONFIGDIR=/etc
+	make all PREFIX=/usr VARPREFIX=/var CONFIGDIR=/etc CFLAGS_EXTRA=-g
 
 override_dh_auto_install:
 	make install install-doc PREFIX=/usr VARPREFIX=/var CONFIGDIR=/etc DESTDIR=debian/isolate
