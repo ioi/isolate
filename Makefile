@@ -70,7 +70,7 @@ release: isolate.1.html
 	git push --tags
 	git archive --format=tar --prefix=isolate-$(VERSION)/ HEAD | gzip >isolate-$(VERSION).tar.gz
 	rsync isolate-$(VERSION).tar.gz jw:/home/ftp/pub/mj/isolate/
-	rsync isolate.1.html jw:/var/www/moe/
+	rsync isolate.1.html jw:/projects/isolate/www/
 	ssh jw 'cd web && bin/release-prog isolate $(VERSION)'
 
 .PHONY: all clean install install-doc release
