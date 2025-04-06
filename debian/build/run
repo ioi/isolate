@@ -10,7 +10,7 @@ buildpkg ()
 	echo "### Building packages for $SUITE"
 
 	echo "# Updating container"
-	podman build --file container-$SUITE --tag $IMAGE
+	podman build --file container/$SUITE --tag $IMAGE
 
 	echo "# Creating build directory"
 	rm -rf $BDIR
@@ -29,6 +29,8 @@ buildpkg ()
 }
 
 buildpkg bookworm
+buildpkg noble
+buildpkg jammy
 
 echo "### Updating package index"
 ssh jw 'cd /projects/isolate/debian && ./genpkg'
