@@ -44,8 +44,9 @@ of the manual page.
 
 ## Debian packages
 
-Isolate is also available as packages for stable Debian Linux. To use them,
-add the following to your `/etc/apt/sources.list`:
+Isolate is also available as packages for stable Debian Linux and last two LTS
+releases of Ubuntu, all on the amd64 architecture. To use them, add the following
+to your `/etc/apt/sources.list`:
 
     deb [arch=amd64 signed-by=/etc/apt/keyrings/isolate.asc] http://www.ucw.cz/isolate/debian/ bookworm-isolate main
 
@@ -56,3 +57,5 @@ You also need to install the repository's public key:
 Then invoke:
 
     apt update && apt install isolate
+
+There are experimental packages for the arm64 architecture, too.
