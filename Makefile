@@ -2,7 +2,7 @@
 # (c) 2015--2024 Martin Mares <mj@ucw.cz>
 # (c) 2017 Bernard Blackham <bernard@blackham.com.au>
 
-all: isolate isolate.1 isolate.1.html isolate-check-environment isolate-cg-keeper
+all: isolate isolate.1 isolate.1.html isolate-check-environment isolate-cg-keeper default.cf systemd/isolate.service
 
 CC=gcc
 CFLAGS=-std=gnu99 -Wall -Wextra -Wno-parentheses -Wno-unused-result -Wno-missing-field-initializers -Wstrict-prototypes -Wmissing-prototypes $(CFLAGS_HARDEN) -D_GNU_SOURCE $(CFLAGS_EXTRA)
@@ -53,13 +53,18 @@ isolate.1: isolate.1.txt
 isolate.1.html: isolate.1.txt isolate.1
 	a2x -f xhtml -D . $<
 
+%: %.in
+	sed "s|@SBINDIR@|$(SBINDIR)|g; s|@BOXDIR@|$(BOXDIR)|g" <$< >$@
+
 clean:
 	rm -f *.o
 	rm -f isolate isolate-cg-keeper
 	rm -f isolate.1 isolate.1.html
 	rm -f docbook-xsl.css
+	rm -f default.cf
+	rm -f systemd/isolate.service
 
-install: isolate isolate-check-environment isolate-cg-keeper
+install: isolate isolate-check-environment isolate-cg-keeper default.cf
 	install -d $(DESTDIR)$(BINDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(BOXDIR) $(DESTDIR)$(CONFIGDIR)
 	install isolate-check-environment $(DESTDIR)$(BINDIR)
 	install isolate-cg-keeper $(DESTDIR)$(SBINDIR)
