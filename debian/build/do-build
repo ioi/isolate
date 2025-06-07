@@ -1,4 +1,10 @@
 #!/bin/bash
 set -e
 cd isolate
-dpkg-buildpackage -b -uc -tc
+. /etc/os-release
+if [ "$ID" = debian ] ; then
+	# We currently run linitian only on Debian
+	dpkg-buildpackage -b -uc -tc --check-command=lintian --check-option=-i --check-option=--fail-on=warning,error --check-option=--allow-root
+else
+	dpkg-buildpackage -b -uc -tc
+fi
