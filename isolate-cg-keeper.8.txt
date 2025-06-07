@@ -1,0 +1,22 @@
+ISOLATE-CG-KEEPER(8)
+====================
+
+NAME
+----
+isolate-cg-keeper - A helper daemon for keeping cgroups alive
+
+SYNOPSIS
+--------
+*isolate-cg-keeper*
+
+DESCRIPTION
+-----------
+To use *isolate*(1) on a system with *systemd*(1), it is necessary to have a subtree of the
+control group tree delegated to Isolate.
+
+This is accomplished by running a service (`isolate.service`) that keeps alive a slice (`isolate.slice`)
+using the *isolate-cg-keeper* daemon.
+
+SEE ALSO
+--------
+*isolate*(1)
