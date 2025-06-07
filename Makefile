@@ -5,8 +5,13 @@
 all: isolate isolate.1 isolate.1.html isolate-check-environment isolate-cg-keeper
 
 CC=gcc
-CFLAGS=-std=gnu99 -Wall -Wextra -Wno-parentheses -Wno-unused-result -Wno-missing-field-initializers -Wstrict-prototypes -Wmissing-prototypes -D_GNU_SOURCE $(CFLAGS_EXTRA)
+CFLAGS=-std=gnu99 -Wall -Wextra -Wno-parentheses -Wno-unused-result -Wno-missing-field-initializers -Wstrict-prototypes -Wmissing-prototypes $(CFLAGS_HARDEN) -D_GNU_SOURCE $(CFLAGS_EXTRA)
+LDFLAGS=$(LDFLAGS_HARDEN)
 LIBS=-lcap
+
+# Inspiration: https://best.openssf.org/Compiler-Hardening-Guides/Compiler-Options-Hardening-Guide-for-C-and-C++.html
+CFLAGS_HARDEN=-D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fPIE -pie
+LDFLAGS_HARDEN=-Wl,-z,nodlopen -Wl,-z,noexecstack -Wl,-z,relro -Wl,-z,now
 
 VERSION=2.0
 YEAR=2024
