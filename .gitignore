@@ -2,8 +2,8 @@ debian/build/build-tmp
 default.cf
 docbook-xsl.css
 isolate
-isolate.1
-isolate.1.html
+*.[18]
+*.[18].html
 isolate-cg-keeper
 systemd/isolate.service
 *.o
