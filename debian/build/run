@@ -1,16 +1,17 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
-buildpkg ()
+BUILD_DIR=build-tmp
+
+build ()
 {
-	SUITE=$1
-	IMAGE=isolate-build-$SUITE
-	BDIR=build-tmp-$SUITE
+	local IMAGE=isolate-build-$ARCH-$SUITE
+	local PLATFORM="--platform linux/$ARCH"
 
-	echo "### Building packages for $SUITE"
+	echo "### Building packages for $SUITE/$ARCH"
 
 	echo "# Updating container"
-	podman build --file container/$SUITE --tag $IMAGE
+	podman build $PLATFORM --file container/$SUITE --tag $IMAGE
 
 	echo "# Creating build directory"
 	rm -rf $BDIR
@@ -19,20 +20,46 @@ buildpkg ()
 	( cd ../.. && git archive --prefix=isolate/ HEAD ) | ( cd $BDIR && tar x )
 
 	echo "# Building"
-	podman run -it --rm --volume ./$BDIR:/build --workdir /build $IMAGE ./do-build
-
-	echo "# Publishing packages"
-	rsync $BDIR/*.deb jw:/projects/isolate/www/debian/dists/$SUITE-isolate/main/binary-amd64/
-
-	echo "# Cleaning up"
-	rm -rf $BDIR
+	podman run $PLATFORM -it --rm --volume ./$BDIR:/build --workdir /build $IMAGE ./do-build
 }
 
-buildpkg bookworm
-buildpkg noble
-buildpkg jammy
+publish ()
+{
+	echo "### Publishing packages for $SUITE/$ARCH"
+	rsync $BDIR/*.deb jw:/projects/isolate/www/debian/dists/$SUITE-isolate/main/binary-$ARCH/
+}
+
+try_dist ()
+{
+	local SUITE=$1
+	local ARCH=$2
+	local BDIR=$BUILD_DIR/$ARCH-$SUITE
+	$STEP
+}
+
+try_all_dists ()
+{
+	local STEP=$1
+
+	try_dist bookworm amd64
+	try_dist noble amd64
+	try_dist jammy amd64
+
+	# Cross-building for amd64 requires qemu-user-static installed
+	try_dist bookworm arm64
+}
+
+try_all_dists build
+
+echo -n "Press Enter to publish packages or Ctrl-C to abort ... "
+read ENTER
+
+try_all_dists publish
 
 echo "### Updating package index"
 ssh jw 'cd /projects/isolate/debian && ./genpkg'
+
+echo "### Cleaning up"
+rm -rf $BUILD_DIR
 
 echo "### Done"
