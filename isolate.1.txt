@@ -377,7 +377,7 @@ For control group mode:
 - If you are using systemd, you need to start the `isolate.service` (see service files
   in the `systemd` directory in Isolate's source tree). It establishes
   `isolate.scope` whose cgroup subtree is delegated to Isolate by systemd.
-  The service runs a simple daemon `isolate-cg-keeper` to keep the scope alive.
+  The service runs a simple daemon *isolate-cg-keeper*(8) to keep the scope alive.
 
 - If you are not using systemd, make sure that Isolate's configuration file
   refers to the correct location where you have the cgroup filesystem mounted.
@@ -450,3 +450,7 @@ LICENSE
 Isolate was written by Martin Mares and Bernard Blackham.
 It can be distributed and used under the terms of the GNU
 General Public License version 2 or any later version.
+
+SEE ALSO
+--------
+*isolate-check-environment*(8), *isolate-cg-keeper*(8)
