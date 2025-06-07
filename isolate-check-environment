@@ -3,7 +3,7 @@
 # Identifies potential sources issues when using isolate.
 #
 #     (c) 2017 Bernard Blackham <bernard@blackham.com.au>
-#     (c) 2022-2024 Martin Mares <mj@ucw.cz>
+#     (c) 2022-2025 Martin Mares <mj@ucw.cz>
 #     (c) 2024 Stephan Gomer <me@sadfun.org>
 #
 
@@ -12,23 +12,9 @@ usage() {
 Usage: $0 [-q|--quiet] [-e|--execute]
 
 Use this script to identify sources of run-time variability and other issues on
-Linux machines which may affect isolate. If --execute is not specified, the
-recommended actions are written to stdout as an executable shell script,
-otherwise, using --execute will attempt to make changes to make the system
-behave more deterministically. The changes performed by --execute persist only
-until a reboot. To persist across reboots, the standard output from this script
-should be added to /etc/rc.local or some other script that is run on each boot.
-Alternately, you could add the following line to /etc/rc.local to automatically
-apply these changes on boot, but use this with caution as not all issues can
-be resolved in this way.
+Linux machines which may affect isolate.
 
-    isolate-check-environment --quiet --execute
-
-The exit status of this script will be 0 if all checks pass, or 1 if some
-checks have failed.
-
-Note that there are more strategies to reduce run-time variability further.
-See the man page of isolate for details under REPRODUCIBILITY.
+See manual page for details.
 EOT
     exit 2
 }
