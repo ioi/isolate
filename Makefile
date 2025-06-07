@@ -23,11 +23,13 @@ VARPREFIX = /var/local
 CONFIGDIR = $(PREFIX)/etc
 CONFIG = $(CONFIGDIR)/isolate
 BINDIR = $(PREFIX)/bin
+LIBDIR = $(PREFIX)/lib
 SBINDIR = $(PREFIX)/sbin
 DATADIR = $(PREFIX)/share
 MANDIR = $(DATADIR)/man
 MAN1DIR = $(MANDIR)/man1
 BOXDIR = $(VARPREFIX)/lib/isolate
+UNITDIR = $(LIBDIR)/systemd/system
 
 SYSTEMD_CFLAGS := $(shell pkg-config libsystemd --cflags)
 SYSTEMD_LIBS := $(shell pkg-config libsystemd --libs)
@@ -64,12 +66,13 @@ clean:
 	rm -f default.cf
 	rm -f systemd/isolate.service
 
-install: isolate isolate-check-environment isolate-cg-keeper default.cf
-	install -d $(DESTDIR)$(BINDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(BOXDIR) $(DESTDIR)$(CONFIGDIR)
+install: isolate isolate-check-environment isolate-cg-keeper default.cf systemd/isolate.slice systemd/isolate.service
+	install -d $(DESTDIR)$(BINDIR) $(DESTDIR)$(SBINDIR) $(DESTDIR)$(BOXDIR) $(DESTDIR)$(CONFIGDIR) $(DESTDIR)$(UNITDIR)
 	install isolate-check-environment $(DESTDIR)$(BINDIR)
 	install isolate-cg-keeper $(DESTDIR)$(SBINDIR)
 	install -m 4755 isolate $(DESTDIR)$(BINDIR)
 	install -m 644 default.cf $(DESTDIR)$(CONFIG)
+	install -m 644 systemd/isolate.slice systemd/isolate.service $(DESTDIR)$(UNITDIR)
 
 install-doc: isolate.1
 	install -d $(DESTDIR)$(MAN1DIR)
