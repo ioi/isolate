@@ -1,3 +1,4 @@
+debian/build/build-tmp
 default.cf
 docbook-xsl.css
 isolate
