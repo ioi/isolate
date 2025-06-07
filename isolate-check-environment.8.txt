@@ -1,0 +1,34 @@
+ISOLATE-CHECK-ENVIRONMENT(8)
+============================
+
+NAME
+----
+isolate-check-environment - Check for common environment quirks
+
+SYNOPSIS
+--------
+*isolate-check-environment* [*-q*|*--quiet*] [*e*|*--execute*]
+
+DESCRIPTION
+-----------
+This script can be used to identify sources of run-time variability and other issues on
+Linux machines which may affect *isolate*(1).
+
+If *--execute* is not specified, the recommended actions are written to stdout as an executable
+shell script. With *--execute*, the script will attempt to make changes to make the system
+behave more deterministically.
+
+The changes performed by *--execute* persist only
+until a reboot. To persist across reboots, the standard output from this script
+should be added to `/etc/rc.local` or some other script that is run on each boot.
+Alternately, you could execute *isolate-check-environment --quiet --execute*
+from `rc.local`, but use this with caution as not all issues can be resolved in this way.
+
+The exit status will be 0 if all checks pass, or 1 if some checks have failed.
+
+Note that there are more strategies to reduce run-time variability further.
+See *isolate*(1) for details under REPRODUCIBILITY.
+
+SEE ALSO
+--------
+*isolate*(1)
