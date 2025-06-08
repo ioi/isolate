@@ -20,7 +20,7 @@ LDFLAGS_HARDEN=-Wl,-z,nodlopen -Wl,-z,noexecstack -Wl,-z,relro -Wl,-z,now
 VERSION=2.1
 YEAR=2025
 BUILD_DATE:=$(shell date '+%Y-%m-%d')
-BUILD_COMMIT:=$(shell if git rev-parse >/dev/null 2>/dev/null ; then git describe --always --tags ; else echo '<unknown>' ; fi)
+BUILD_COMMIT:=$(shell if [ -f build-commit ] ; then cat build-commit ; else if git rev-parse >/dev/null 2>/dev/null ; then git describe --always --tags ; else echo '<unknown>' ; fi ; fi)
 
 PREFIX = /usr/local
 VARPREFIX = /var/local
@@ -97,5 +97,9 @@ release: isolate.1.html
 	rsync isolate-$(VERSION).tar.gz jw:/home/ftp/pub/mj/isolate/
 	rsync $(addsuffix .html,$(MANPAGES)) jw:/projects/isolate/www/
 	ssh jw 'cd web && bin/release-prog isolate $(VERSION)'
+
+# Used by debian/build/run
+show-build-commit:
+	@echo "$(BUILD_COMMIT)"
 
 .PHONY: all clean install install-doc release
