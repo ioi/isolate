@@ -52,7 +52,7 @@ to your `/etc/apt/sources.list`:
 
 You also need to install the repository's public key:
 
-    curl https://www.ucw.cz/isolate/debian/signing-key.asc >/dev/apt/keyrings/isolate.asc
+    curl https://www.ucw.cz/isolate/debian/signing-key.asc >/etc/apt/keyrings/isolate.asc
 
 Then invoke:
 
