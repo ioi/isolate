@@ -1,0 +1,18 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+remove)
+	if getent group isolate >/dev/null ; then
+		echo "Removing group isolate"
+		delgroup --quiet --only-if-empty isolate
+	fi
+	if dpkg-statoverride --list /usr/bin/isolate >/dev/null 2>&1 ; then
+		dpkg-statoverride --remove /usr/bin/isolate
+	fi
+;;
+esac
+
+#DEBHELPER#
+
+exit 0

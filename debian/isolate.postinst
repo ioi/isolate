@@ -1,0 +1,17 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+configure)
+	if ! getent group isolate >/dev/null ; then
+		echo "Adding new group isolate"
+		addgroup --quiet --system isolate
+	fi
+	dpkg-statoverride --list /usr/bin/isolate >/dev/null 2>&1 ||
+		dpkg-statoverride --update --add root isolate 4754 /usr/bin/isolate
+;;
+esac
+
+#DEBHELPER#
+
+exit 0
