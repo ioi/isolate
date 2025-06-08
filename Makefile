@@ -17,8 +17,8 @@ LIBS=-lcap
 CFLAGS_HARDEN=-D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fPIE -pie
 LDFLAGS_HARDEN=-Wl,-z,nodlopen -Wl,-z,noexecstack -Wl,-z,relro -Wl,-z,now
 
-VERSION=2.0
-YEAR=2024
+VERSION=2.1
+YEAR=2025
 BUILD_DATE:=$(shell date '+%Y-%m-%d')
 BUILD_COMMIT:=$(shell if git rev-parse >/dev/null 2>/dev/null ; then git describe --always --tags ; else echo '<unknown>' ; fi)
 

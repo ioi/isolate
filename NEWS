@@ -1,3 +1,25 @@
+Version 2.1  [2025-06-08]
+
+  •  There are official packages for Debian Bookworm (amd64, arm64)
+     and last two LTS releases of Ubuntu (amd64 only). Packaged Isolate
+     takes care of starting systemd services properly. It is available
+     only to users that are members of "isolate" group.
+
+  •  Unit files for systemd are installed by default.
+
+  •  Cgroup-based timing works when --run is used multiple times
+     on the same sandbox.
+
+  •  Added manual pages for isolate-cg-keeper and isolate-check-environment.
+     The man page for isolate explains more about cgroups and containers.
+
+  •  isolate-check-environment checks presence of simultaneous
+     multi-threading.
+
+  •  All binaries are compiled with security hardening flags.
+
+  •  Minor bug fixes.
+
 Version 2.0  [2024-02-28]
 
   •  This version runs only on systems supporting CGroup v2, which are
