@@ -2,6 +2,10 @@
 set -e
 cd isolate
 . /etc/os-release
+for fixup in $(find debian -name "*.$VERSION_CODENAME") ; do
+	echo "Applying fixup: $fixup"
+	mv $fixup ${fixup%.$VERSION_CODENAME}
+done
 if [ "$ID" = debian ] ; then
 	# We currently run linitian only on Debian
 	dpkg-buildpackage -b -uc -tc --check-command=lintian --check-option=-i --check-option=--fail-on=warning,error --check-option=--allow-root
