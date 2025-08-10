@@ -325,5 +325,18 @@ hardlink_check() {
 }
 hardlink_check
 
+# Check for an Intel CPU with both P-cores and E-cores.
+# At the moment, we have no automatic remedy.
+asymmetric_core_check() {
+    print_start_check "asymmetric cores"
+    # if [ -d /sys/devices/cpu_atom -a -d /sys/devices/cpu_core ] ; then
+    if [ -d /sys/devices/cpu ] ; then
+        print_dubious
+        quiet || warn "the CPU has a combination of P-cores and E-cores, core pinning should be used."
+    fi
+    print_finish
+}
+asymmetric_core_check
+
 
 exit $exit_status

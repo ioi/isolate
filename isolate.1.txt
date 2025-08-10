@@ -435,6 +435,9 @@ or by writing 0 to /sys/devices/system/cpu/cpufreq/boost (other machines).
 migrate tasks between CPUs, incurring cache migration costs. You can use isolate's
 configuration file to pin the process to a specified CPU.
 
+* If you have CPU with a mix of different cores (e.g., P-cores and E-cores in certain Intel CPUs),
+pin the sandbox to a homogeneous subset of cores.
+
 * Disable automatic kernel support for transparent huge pages. Both /sys/kernel/mm/transparent_hugepage/enabled
 and /sys/kernel/mm/transparent_hugepage/defrag should be set to "madvise" or "never", and
 /sys/kernel/mm/transparent_hugepage/khugepaged/defrag to 0.
