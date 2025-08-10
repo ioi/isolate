@@ -43,11 +43,13 @@ try_all_dists ()
 	local STEP=$1
 
 	try_dist bookworm amd64
+	try_dist trixie amd64
 	try_dist noble amd64
 	try_dist jammy amd64
 
 	# Cross-building for amd64 requires qemu-user-static installed
 	try_dist bookworm arm64
+	try_dist trixie arm64
 }
 
 BUILD_COMMIT=$(cd ../.. && make show-build-commit)

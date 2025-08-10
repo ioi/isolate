@@ -1,0 +1,18 @@
+#!/usr/bin/make -f
+
+# export DH_VERBOSE = 1
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	make all PREFIX=/usr VARPREFIX=/var CONFIGDIR=/etc CFLAGS_EXTRA=-g
+
+override_dh_auto_install:
+	make install install-doc PREFIX=/usr VARPREFIX=/var CONFIGDIR=/etc LIBDIR=/usr/lib DESTDIR=debian/isolate
+
+override_dh_fixperms:
+	dh_fixperms --exclude usr/bin/isolate
+
+override_dh_installsystemd:
+	dh_installsystemd isolate.service
