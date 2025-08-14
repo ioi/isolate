@@ -1,3 +1,12 @@
+Version 2.1.1  [2025-08-14]
+
+  *  isolate-check-environment checks for asymmetric cores.
+
+  *  By mistake, isolate was compiled without optimization.
+     Added -O2 to CFLAGS.
+
+  *  Added packaging for Debian Trixie on both amd64 and arm64.
+
 Version 2.1  [2025-06-08]
 
   •  There are official packages for Debian Bookworm (amd64, arm64)
