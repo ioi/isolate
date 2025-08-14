@@ -90,7 +90,7 @@ install-doc: $(MANPAGES)
 	install -m 644 isolate.1 $(DESTDIR)$(MAN1DIR)/
 	install -m 644 isolate-check-environment.8 isolate-cg-keeper.8 $(DESTDIR)$(MAN8DIR)/
 
-release: isolate.1.html
+release: $(addsuffix .html,$(MANPAGES))
 	git tag v$(VERSION)
 	git push --tags
 	git archive --format=tar --prefix=isolate-$(VERSION)/ HEAD | gzip >isolate-$(VERSION).tar.gz
