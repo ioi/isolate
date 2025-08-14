@@ -9,7 +9,7 @@ CONFIGS=default.cf systemd/isolate.slice systemd/isolate.service
 all: $(PROGRAMS) $(MANPAGES) $(addsuffix .html, $(MANPAGES)) $(CONFIGS)
 
 CC=gcc
-CFLAGS=-std=gnu99 -Wall -Wextra -Wno-parentheses -Wno-unused-result -Wno-missing-field-initializers -Wstrict-prototypes -Wmissing-prototypes $(CFLAGS_HARDEN) -D_GNU_SOURCE $(CFLAGS_EXTRA)
+CFLAGS=-std=gnu99 -O2 -Wall -Wextra -Wno-parentheses -Wno-unused-result -Wno-missing-field-initializers -Wstrict-prototypes -Wmissing-prototypes $(CFLAGS_HARDEN) -D_GNU_SOURCE $(CFLAGS_EXTRA)
 LDFLAGS=$(LDFLAGS_HARDEN)
 LIBS=-lcap
 
