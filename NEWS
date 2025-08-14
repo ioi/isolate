@@ -1,3 +1,8 @@
+Version 2.1.2  [2025-08-14]
+
+  *  Build date and commit are recorded in built binaries only
+     when building from a Git checkout.
+
 Version 2.1.1  [2025-08-14]
 
   *  isolate-check-environment checks for asymmetric cores.
