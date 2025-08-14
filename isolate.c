@@ -1075,9 +1075,11 @@ run(char **argv)
 static void
 show_version(void)
 {
-  printf("The process isolator " VERSION "\n");
-  printf("(c) 2012--" YEAR " Martin Mares and Bernard Blackham\n");
+  printf("The process isolator " ISOLATE_VERSION "\n");
+  printf("(c) 2012--" ISOLATE_YEAR " Martin Mares and Bernard Blackham\n");
+#if defined(BUILD_DATE) && defined(BUILD_COMMIT)
   printf("Built on " BUILD_DATE " from Git commit " BUILD_COMMIT "\n");
+#endif
 }
 
 /*** Options ***/

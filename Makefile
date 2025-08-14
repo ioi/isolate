@@ -2,6 +2,9 @@
 # (c) 2015--2025 Martin Mares <mj@ucw.cz>
 # (c) 2017 Bernard Blackham <bernard@blackham.com.au>
 
+VERSION=2.1.1
+YEAR=2025
+
 PROGRAMS=isolate isolate-check-environment isolate-cg-keeper
 MANPAGES=isolate.1 isolate-check-environment.8 isolate-cg-keeper.8
 CONFIGS=default.cf systemd/isolate.slice systemd/isolate.service
@@ -17,10 +20,15 @@ LIBS=-lcap
 CFLAGS_HARDEN=-D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fPIE -pie
 LDFLAGS_HARDEN=-Wl,-z,nodlopen -Wl,-z,noexecstack -Wl,-z,relro -Wl,-z,now
 
-VERSION=2.1.1
-YEAR=2025
-BUILD_DATE:=$(shell date '+%Y-%m-%d')
-BUILD_COMMIT:=$(shell if [ -f build-commit ] ; then cat build-commit ; else if git rev-parse >/dev/null 2>/dev/null ; then git describe --always --tags ; else echo '<unknown>' ; fi ; fi)
+CFLAGS_BUILD=-DISOLATE_VERSION='"$(VERSION)"' -DISOLATE_YEAR='"$(YEAR)"'
+
+# If we are building from a checked out repository, include build date and commit
+BUILD_FROM_GIT := $(shell if [ -d .git ] ; then echo yes ; fi)
+ifdef BUILD_FROM_GIT
+BUILD_DATE := $(shell date '+%Y-%m-%d')
+BUILD_COMMIT := $(shell if git rev-parse >/dev/null 2>/dev/null ; then git describe --always --tags ; else echo '<unknown>' ; fi)
+CFLAGS_BUILD += -DBUILD_DATE='"$(BUILD_DATE)"' -DBUILD_COMMIT='"$(BUILD_COMMIT)"'
+endif
 
 PREFIX = /usr/local
 VARPREFIX = /var/local
@@ -48,7 +56,7 @@ isolate-cg-keeper: isolate-cg-keeper.o config.o util.o
 %.o: %.c isolate.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-isolate.o: CFLAGS += -DVERSION='"$(VERSION)"' -DYEAR='"$(YEAR)"' -DBUILD_DATE='"$(BUILD_DATE)"' -DBUILD_COMMIT='"$(BUILD_COMMIT)"'
+isolate.o: CFLAGS += $(CFLAGS_BUILD)
 config.o: CFLAGS += -DCONFIG_FILE='"$(CONFIG)"'
 isolate-cg-keeper.o: CFLAGS += $(SYSTEMD_CFLAGS)
 
@@ -97,9 +105,5 @@ release: $(addsuffix .html,$(MANPAGES))
 	rsync isolate-$(VERSION).tar.gz jw:/home/ftp/pub/mj/isolate/
 	rsync $(addsuffix .html,$(MANPAGES)) jw:/projects/isolate/www/
 	ssh jw 'cd web && bin/release-prog isolate $(VERSION)'
-
-# Used by debian/build/run
-show-build-commit:
-	@echo "$(BUILD_COMMIT)"
 
 .PHONY: all clean install install-doc release

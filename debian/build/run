@@ -18,7 +18,6 @@ build ()
 	mkdir -p $BDIR
 	cp do-build $BDIR/
 	( cd ../.. && git archive --prefix=isolate/ HEAD ) | ( cd $BDIR && tar x )
-	echo $BUILD_COMMIT >$BDIR/isolate/build-commit
 
 	echo "# Building"
 	podman run $PLATFORM -it --rm --volume ./$BDIR:/build --workdir /build $IMAGE ./do-build
@@ -51,8 +50,6 @@ try_all_dists ()
 	try_dist bookworm arm64
 	try_dist trixie arm64
 }
-
-BUILD_COMMIT=$(cd ../.. && make show-build-commit)
 
 try_all_dists build
 
