@@ -17,6 +17,7 @@
 #include <string.h>
 #include <sys/fsuid.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
 
 void *
@@ -49,6 +50,19 @@ char *xsprintf(const char *fmt, ...)
 
   va_end(args);
   return out;
+}
+
+void
+timespec_sub(const struct timespec *a, const struct timespec *b, struct timespec *result)
+{
+  result->tv_sec  = a->tv_sec - b->tv_sec;
+  result->tv_nsec = a->tv_nsec - b->tv_nsec;
+
+  if (result->tv_nsec < 0)
+  {
+    result->tv_sec  -= 1;
+    result->tv_nsec += 1000000000L;
+  }
 }
 
 int

@@ -111,7 +111,7 @@ static bool invoked_by_root;
 static int partial_line;
 static int cleanup_ownership;
 
-static struct timeval start_time;
+static struct timespec start_time;
 static int ticks_per_sec;
 static int total_ms, wall_ms;
 static volatile sig_atomic_t timer_tick, interrupt;
@@ -524,10 +524,10 @@ read_proc_file(char *buf, char *name, int *fdp)
 static int
 get_wall_time_ms(void)
 {
-  struct timeval now, wall;
-  gettimeofday(&now, NULL);
-  timersub(&now, &start_time, &wall);
-  return wall.tv_sec*1000 + wall.tv_usec/1000;
+  struct timespec now, wall;
+  clock_gettime(CLOCK_MONOTONIC, &now);
+  timespec_sub(&now, &start_time, &wall);
+  return wall.tv_sec*1000 + wall.tv_nsec/1000000;
 }
 
 static int
@@ -598,7 +598,7 @@ box_keeper(void)
   close(error_pipes[1]);
   close(status_pipes[1]);
 
-  gettimeofday(&start_time, NULL);
+  clock_gettime(CLOCK_MONOTONIC, &start_time);
   ticks_per_sec = sysconf(_SC_CLK_TCK);
   if (ticks_per_sec <= 0)
     die("Invalid ticks_per_sec!");

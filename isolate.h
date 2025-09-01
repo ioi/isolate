@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/types.h>
+#include <time.h>
 
 #define NONRET __attribute__((noreturn))
 #define UNUSED __attribute__((unused))
@@ -36,6 +37,8 @@ extern gid_t box_gid, orig_gid;
 void *xmalloc(size_t size);
 char *xstrdup(char *str);
 char * __attribute__((format(printf,1,2))) xsprintf(const char *fmt, ...);
+
+void timespec_sub(const struct timespec *a, const struct timespec *b, struct timespec *result);
 
 int dir_exists(char *path);
 void rmtree(char *path);
