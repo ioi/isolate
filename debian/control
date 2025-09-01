@@ -14,4 +14,4 @@ Description: Sandbox for programming contests
  gives them a limited-access environment, preventing them from affecting
  the host system. It takes advantage of features specific to the Linux
  kernel, like namespaces and control groups.
-Depends: ${shlibs:Depends}
+Depends: adduser, ${shlibs:Depends}
