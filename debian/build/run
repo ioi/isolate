@@ -5,22 +5,29 @@ BUILD_DIR=build-tmp
 
 build ()
 {
-	local IMAGE=isolate-build-$ARCH-$SUITE
+	local BUILD_IMAGE=isolate-build-$ARCH-$SUITE
+	local TEST_IMAGE=isolate-test-$ARCH-$SUITE
 	local PLATFORM="--platform linux/$ARCH"
 
 	echo "### Building packages for $SUITE/$ARCH"
 
-	echo "# Updating container"
-	podman build $PLATFORM --file container/$SUITE --tag $IMAGE
+	echo "# Updating build container"
+	podman build $PLATFORM --file container-build/$SUITE --tag $BUILD_IMAGE
+
+	echo "# Updating build container"
+	podman build $PLATFORM --file container-test/$SUITE --tag $TEST_IMAGE
 
 	echo "# Creating build directory"
 	rm -rf $BDIR
 	mkdir -p $BDIR
-	cp do-build $BDIR/
+	cp do-build do-test $BDIR/
 	( cd ../.. && git archive --prefix=isolate/ HEAD ) | ( cd $BDIR && tar x )
 
 	echo "# Building"
-	podman run $PLATFORM -it --rm --volume ./$BDIR:/build --workdir /build $IMAGE ./do-build
+	podman run $PLATFORM -it --rm --volume ./$BDIR:/build --workdir /build $BUILD_IMAGE ./do-build
+
+	echo "# Testing"
+	podman run $PLATFORM -it --rm --volume ./$BDIR:/build --workdir /build $BUILD_IMAGE ./do-test
 }
 
 publish ()
