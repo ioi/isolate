@@ -7,6 +7,7 @@
 
 #include "isolate.h"
 
+#include <errno.h>
 #include <limits.h>
 #include <mntent.h>
 #include <stdio.h>
@@ -16,6 +17,7 @@
 #include <sys/mount.h>
 #include <sys/quota.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 #include <sys/vfs.h>
 #include <unistd.h>
 
@@ -502,11 +504,46 @@ find_device(char *path)
   return best_dev;
 }
 
+static void
+quotactl_error(void)
+{
+  // This errno has an outstandingly unhelpful message of "no such process".
+  if (errno == ESRCH)
+    die("Cannot set disk quota: quotas have not been enabled for this filesystem");
+  die("Cannot set disk quota: %m");
+}
+
 void
 set_quota(void)
 {
   if (!block_quota)
     return;
+
+  struct dqblk dq = {
+    .dqb_bhardlimit = block_quota,
+    .dqb_bsoftlimit = block_quota,
+    .dqb_ihardlimit = inode_quota,
+    .dqb_isoftlimit = inode_quota,
+    .dqb_valid = QIF_LIMITS,
+  };
+  void *dq_ptr = (void*)&dq;
+  int quota_op = QCMD(Q_SETQUOTA, USRQUOTA);
+
+#ifdef SYS_quotactl_fd
+
+  // silence warning about unused function
+  (void)find_device;
+
+  int cwd_fd = open(".", O_DIRECTORY | O_PATH);
+  if (cwd_fd < 0)
+    die("open: %m");
+
+  if (syscall(SYS_quotactl_fd, cwd_fd, quota_op, box_uid, dq_ptr) < 0)
+    quotactl_error();
+
+  close(cwd_fd);
+
+#else
 
   char cwd[PATH_MAX];
   if (!getcwd(cwd, sizeof(cwd)))
@@ -528,16 +565,12 @@ set_quota(void)
   if (cwd_st.st_dev != dev_st.st_rdev)
     die("Identified %s as a filesystem on %s, but it is obviously false", cwd, dev);
 
-  struct dqblk dq = {
-    .dqb_bhardlimit = block_quota,
-    .dqb_bsoftlimit = block_quota,
-    .dqb_ihardlimit = inode_quota,
-    .dqb_isoftlimit = inode_quota,
-    .dqb_valid = QIF_LIMITS,
-  };
-  if (quotactl(QCMD(Q_SETQUOTA, USRQUOTA), dev, box_uid, (caddr_t) &dq) < 0)
-    die("Cannot set disk quota: %m");
-  msg("Quota: Set block quota %d and inode quota %d\n", block_quota, inode_quota);
+  if (quotactl(quota_op, dev, box_uid, dq_ptr) < 0)
+    quotactl_error();
 
   free(dev);
+
+#endif
+
+  msg("Quota: Set block quota %d and inode quota %d\n", block_quota, inode_quota);
 }
