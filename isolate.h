@@ -16,7 +16,7 @@
 
 /* isolate.c */
 
-void die(char *msg, ...) NONRET;
+void NONRET __attribute__((format(printf,1,2))) die(char *msg, ...);
 void NONRET __attribute__((format(printf,1,2))) err(char *msg, ...);
 void __attribute__((format(printf,1,2))) msg(char *msg, ...);
 

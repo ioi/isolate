@@ -183,7 +183,7 @@ lock_box(bool is_init)
 
   int n = read(lock_fd, &lock, sizeof(lock));
   if (n < 0)
-    die("Cannot read %s: %m");
+    die("Cannot read %s: %m", lock_name);
 
   if (n > 0)
     {
