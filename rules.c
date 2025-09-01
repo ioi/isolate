@@ -1,7 +1,7 @@
 /*
  *	Process Isolator -- Rules
  *
- *	(c) 2012-2018 Martin Mares <mj@ucw.cz>
+ *	(c) 2012-2025 Martin Mares <mj@ucw.cz>
  *	(c) 2012-2014 Bernard Blackham <bernard@blackham.com.au>
  */
 
@@ -466,44 +466,6 @@ apply_dir_rules(int with_defaults)
 
 /*** Disk quotas ***/
 
-static int
-path_begins_with(char *path, char *with)
-{
-  while (*with)
-    if (*path++ != *with++)
-      return 0;
-  return (!*with || *with == '/');
-}
-
-static char *
-find_device(char *path)
-{
-  FILE *f = setmntent("/proc/mounts", "r");
-  if (!f)
-    die("Cannot open /proc/mounts: %m");
-
-  struct mntent *me;
-  int best_len = 0;
-  char *best_dev = NULL;
-  while (me = getmntent(f))
-    {
-      if (!path_begins_with(me->mnt_fsname, "/dev"))
-	continue;
-      if (path_begins_with(path, me->mnt_dir))
-	{
-	  int len = strlen(me->mnt_dir);
-	  if (len > best_len)
-	    {
-	      best_len = len;
-	      free(best_dev);
-	      best_dev = xstrdup(me->mnt_fsname);
-	    }
-	}
-    }
-  endmntent(f);
-  return best_dev;
-}
-
 static void
 quotactl_error(void)
 {
@@ -529,11 +491,6 @@ set_quota(void)
   void *dq_ptr = (void*)&dq;
   int quota_op = QCMD(Q_SETQUOTA, USRQUOTA);
 
-#ifdef SYS_quotactl_fd
-
-  // silence warning about unused function
-  (void)find_device;
-
   int cwd_fd = open(".", O_DIRECTORY | O_PATH);
   if (cwd_fd < 0)
     die("open: %m");
@@ -542,35 +499,6 @@ set_quota(void)
     quotactl_error();
 
   close(cwd_fd);
-
-#else
-
-  char cwd[PATH_MAX];
-  if (!getcwd(cwd, sizeof(cwd)))
-    die("getcwd: %m");
-
-  char *dev = find_device(cwd);
-  if (!dev)
-    die("Cannot identify filesystem which contains %s", cwd);
-  msg("Quota: Mapped path %s to a filesystem on %s\n", cwd, dev);
-
-  // Sanity check
-  struct stat dev_st, cwd_st;
-  if (stat(dev, &dev_st) < 0)
-    die("Cannot identify block device %s: %m", dev);
-  if (!S_ISBLK(dev_st.st_mode))
-    die("Expected that %s is a block device", dev);
-  if (stat(".", &cwd_st) < 0)
-    die("Cannot stat cwd: %m");
-  if (cwd_st.st_dev != dev_st.st_rdev)
-    die("Identified %s as a filesystem on %s, but it is obviously false", cwd, dev);
-
-  if (quotactl(quota_op, dev, box_uid, dq_ptr) < 0)
-    quotactl_error();
-
-  free(dev);
-
-#endif
 
   msg("Quota: Set block quota %d and inode quota %d\n", block_quota, inode_quota);
 }
