@@ -1,3 +1,11 @@
+isolate (2.2) stable; urgency=medium
+
+  * New upstream release.
+
+  * Added a dependency on useradd.
+
+ -- Martin Mares <mj@ucw.cz>  Mon, 01 Sep 2025 11:44:24 +0200
+
 isolate (2.1.2) stable; urgency=medium
 
   * New upstream release.

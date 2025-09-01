@@ -1,3 +1,11 @@
+Version 2.2  [2025-09-01]
+
+  *  Switched to a new kernel API for setting filesystem quotas,
+     which works with more filesystems (e.g., tmpfs).
+
+  *  Wall-clock time is reported correctly even if the system
+     clock is re-set during program execution.
+
 Version 2.1.2  [2025-08-14]
 
   *  Build date and commit are recorded in built binaries only
