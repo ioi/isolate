@@ -1,3 +1,7 @@
+Version 2.2.1  [2025-09-29]
+
+  *  Fixed the check for asymmetric cores in isolate-check-environment.
+
 Version 2.2  [2025-09-01]
 
   *  Switched to a new kernel API for setting filesystem quotas,
