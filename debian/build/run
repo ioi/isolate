@@ -50,15 +50,18 @@ try_all_dists ()
 
 	try_dist bookworm amd64
 	try_dist trixie amd64
-	try_dist noble amd64
-	try_dist jammy amd64
+	#try_dist noble amd64
+	#try_dist jammy amd64
 
 	# Cross-building for amd64 requires qemu-user-static installed
-	try_dist bookworm arm64
-	try_dist trixie arm64
+	#try_dist bookworm arm64
+	#try_dist trixie arm64
 }
 
 try_all_dists build
+
+# HACK
+exit 0
 
 echo -n "Press Enter to publish packages or Ctrl-C to abort ... "
 read ENTER
