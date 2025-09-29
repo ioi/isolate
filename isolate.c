@@ -1,7 +1,7 @@
 /*
  *	A Process Isolator based on Linux Containers
  *
- *	(c) 2012-2024 Martin Mares <mj@ucw.cz>
+ *	(c) 2012-2025 Martin Mares <mj@ucw.cz>
  *	(c) 2012-2014 Bernard Blackham <bernard@blackham.com.au>
  */
 
@@ -99,6 +99,7 @@ int cg_memory_limit;
 
 int box_id;
 static char box_dir[1024];
+static char netns_name[32], netns_path[64];
 static pid_t box_pid;
 static pid_t proxy_pid;
 
@@ -692,6 +693,74 @@ box_keeper(void)
     }
 }
 
+/*** Network namespaces ***/
+
+static void
+execute_program(char *args[])
+{
+  pid_t pid = fork();
+  if (pid < 0)
+    die("Cannot fork: %m");
+
+  if (!pid)
+    {
+      execv(args[0], args);
+      die("Cannot execute %s: %m", args[0]);
+    }
+
+  int status;
+  if (waitpid(pid, &status, 0) < 0)
+    die("Waiting for %s failed: %m", args[0]);
+
+  if (!(WIFEXITED(status) && !WEXITSTATUS(status)))
+    die("%s failed with status %d", args[0], status);
+}
+
+static void
+netns_create(void)
+{
+  if (!cf_netns_script)
+    return;
+
+  msg("Creating network namespace %s", netns_name);
+  execute_program((char *[]) { "/bin/ip", "netns", "add", netns_name, NULL });
+  execute_program((char *[]) { cf_netns_script, netns_name, NULL });
+}
+
+static void
+netns_remove(void)
+{
+  if (!cf_netns_script)
+    return;
+
+  struct stat st;
+  if (stat(netns_path, &st) < 0)
+    {
+      if (errno == ENOENT)
+	return;
+      die("Cannot stat %s: %m", netns_path);
+    }
+
+  msg("Removing network namespace %s", netns_name);
+  execute_program((char *[]) { "/bin/ip", "netns", "del", netns_name, NULL });
+}
+
+static void
+netns_enter(void)
+{
+  if (!cf_netns_script)
+    return;
+
+  int fd = open(netns_path, O_RDONLY);
+  if (fd < 0)
+    die("Cannot open %s: %m", netns_path);
+
+  if (setns(fd, CLONE_NEWNET) < 0)
+    die("Cannot switch to network namespace %s: %m", netns_path);
+
+  close(fd);
+}
+
 /*** The process running inside the box ***/
 
 static void
@@ -863,6 +932,7 @@ box_proxy(void *arg)
   meta_close();
   lock_close();
   reset_signals();
+  netns_enter();
 
   pid_t inside_pid = fork();
   if (inside_pid < 0)
@@ -898,6 +968,8 @@ box_init(void)
   box_gid = cf_first_gid + box_id;
 
   snprintf(box_dir, sizeof(box_dir), "%s/%d", cf_box_root, box_id);
+  snprintf(netns_name, sizeof(netns_name), "box-%d", box_id);
+  snprintf(netns_path, sizeof(netns_path), "/run/netns/%s", netns_name);
 }
 
 /*** Commands ***/
@@ -940,6 +1012,7 @@ do_cleanup(void)
       rmtree(box_dir);
     }
   cg_remove();
+  netns_remove();
 }
 
 static void
@@ -963,6 +1036,7 @@ init(void)
 
   cg_create();
   set_quota();
+  netns_create();
 
   lock.is_initialized = 1;
   lock_write();
@@ -1055,7 +1129,7 @@ run(char **argv)
   proxy_pid = clone(
     box_proxy,			// Function to execute as the body of the new process
     (void*)((uintptr_t)argv & ~(uintptr_t)15),	// Pass our stack, aligned to 16-bytes
-    SIGCHLD | CLONE_NEWIPC | (share_net ? 0 : CLONE_NEWNET) | CLONE_NEWNS | CLONE_NEWPID,
+    SIGCHLD | CLONE_NEWIPC | ((share_net || cf_netns_script) ? 0 : CLONE_NEWNET) | CLONE_NEWNS | CLONE_NEWPID,
     argv);			// Pass the arguments
   if (proxy_pid < 0)
     die("Cannot run proxy, clone failed: %m");
