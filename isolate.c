@@ -725,6 +725,8 @@ netns_create(void)
   msg("Creating network namespace %s", netns_name);
   execute_program((char *[]) { "/bin/ip", "netns", "add", netns_name, NULL });
   execute_program((char *[]) { cf_netns_script, netns_name, NULL });
+  // FIXME: When the setup script fails, we probably want to remove the netns
+  // FIXME: Pass box ID to the script
 }
 
 static void
