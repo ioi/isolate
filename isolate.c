@@ -704,6 +704,8 @@ execute_program(char *args[])
 
   if (!pid)
     {
+      if (setresgid(0, 0, 0) < 0 || setresuid(0, 0, 0) < 0)
+        die("Cannot set UID/GID before executing a helper script: %m");
       execv(args[0], args);
       die("Cannot execute %s: %m", args[0]);
     }
