@@ -1,9 +1,15 @@
-isolate (2.2-net1) unstable; urgency=medium
+isolate (2.2.1-net1) unstable; urgency=medium
 
   * Experimental support for custom network configuration.
 
- -- Martin Mares <mj@ucw.cz>  Mon, 29 Sep 2025 14:37:07 +0200
+ -- Martin Mares <mj@ucw.cz>  Wed, 01 Oct 2025 17:57:47 +0200
 
+isolate (2.2.1) stable; urgency=medium
+
+  * New upstream release.
+
+ -- Martin Mares <mj@ucw.cz>  Wed, 01 Oct 2025 17:48:31 +0200
+>>>>>>> master
 isolate (2.2) stable; urgency=medium
 
   * New upstream release.

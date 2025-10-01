@@ -69,7 +69,7 @@ read ENTER
 try_all_dists publish
 
 echo "### Updating package index"
-ssh jw 'cd /projects/isolate/debian && ./genpkg'
+ssh -t jw 'cd /projects/isolate/debian && ./genpkg'
 
 echo "### Cleaning up"
 rm -rf $BUILD_DIR
