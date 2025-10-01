@@ -9,7 +9,7 @@ isolate (2.2.1) stable; urgency=medium
   * New upstream release.
 
  -- Martin Mares <mj@ucw.cz>  Wed, 01 Oct 2025 17:48:31 +0200
->>>>>>> master
+
 isolate (2.2) stable; urgency=medium
 
   * New upstream release.
