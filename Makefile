@@ -2,7 +2,7 @@
 # (c) 2015--2025 Martin Mares <mj@ucw.cz>
 # (c) 2017 Bernard Blackham <bernard@blackham.com.au>
 
-VERSION=2.2
+VERSION=2.2.1
 YEAR=2025
 
 PROGRAMS=isolate isolate-check-environment isolate-cg-keeper
