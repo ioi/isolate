@@ -1,3 +1,9 @@
+isolate (2.2.1-net2) unstable; urgency=medium
+
+  * Experimental support for awarding CAP_NET_RAW.
+
+ -- Martin Mares <mj@ucw.cz>  Thu, 11 Dec 2025 11:02:15 +0100
+
 isolate (2.2.1-net1) unstable; urgency=medium
 
   * Experimental support for custom network configuration.
