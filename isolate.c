@@ -826,7 +826,7 @@ setup_credentials(void)
     die("setgroups: %m");
   if (cf_cap_net_raw)
     {
-      if (prctl(PR_SET_SECUREBITS, SECBIT_KEEP_CAPS) < 0)
+      if (prctl(PR_SET_SECUREBITS, SECBIT_KEEP_CAPS) < 0)  // Will be cleared on exec
 	die("PR_SET_SECUREBITS: %m");
 
       if (setresuid(box_uid, box_uid, box_uid) < 0)
