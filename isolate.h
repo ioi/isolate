@@ -94,6 +94,7 @@ extern int cf_first_gid;
 extern int cf_num_boxes;
 extern int cf_restricted_init;
 extern char *cf_netns_script;
+extern int cf_cap_net_raw;
 
 struct cf_per_box {
   struct cf_per_box *next;

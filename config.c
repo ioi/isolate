@@ -21,6 +21,7 @@ int cf_first_gid;
 int cf_num_boxes;
 int cf_restricted_init;
 char *cf_netns_script;
+int cf_cap_net_raw;
 
 static int line_number;
 static struct cf_per_box *per_box_configs;
@@ -69,6 +70,8 @@ cf_entry_toplevel(char *key, char *val)
     cf_restricted_init = cf_int(val);
   else if (!strcmp(key, "netns_script"))
     cf_netns_script = cf_string(val);
+  else if (!strcmp(key, "cap_net_raw"))
+    cf_cap_net_raw = cf_int(val);
   else
     cf_err("Unknown configuration item");
 }

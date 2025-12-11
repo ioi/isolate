@@ -17,9 +17,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <linux/securebits.h>
 #include <net/if.h>
+#include <sys/capability.h>
 #include <sys/file.h>
 #include <sys/mount.h>
+#include <sys/prctl.h>
 #include <sys/resource.h>
 #include <sys/signal.h>
 #include <sys/socket.h>
@@ -821,8 +824,36 @@ setup_credentials(void)
     die("setresgid: %m");
   if (setgroups(0, NULL) < 0)
     die("setgroups: %m");
-  if (setresuid(box_uid, box_uid, box_uid) < 0)
-    die("setresuid: %m");
+  if (cf_cap_net_raw)
+    {
+      if (prctl(PR_SET_SECUREBITS, SECBIT_KEEP_CAPS) < 0)
+	die("PR_SET_SECUREBITS: %m");
+
+      if (setresuid(box_uid, box_uid, box_uid) < 0)
+	die("setresuid: %m");
+
+      cap_t caps;
+      if (!(caps = cap_init()))
+	die("Cannot allocate capabilities: %m");
+
+      cap_value_t cap_list[] = { CAP_NET_RAW };
+      if (cap_set_flag(caps, CAP_PERMITTED, 1, cap_list, CAP_SET) < 0 ||
+          cap_set_flag(caps, CAP_INHERITABLE, 1, cap_list, CAP_SET) < 0)
+	die("Cannot modify capabilities");
+
+      if (cap_set_proc(caps) < 0)
+	die("Cannot set capabilities: %m");
+
+      cap_free(caps);
+
+      if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_RAISE, CAP_NET_RAW, 0, 0) < 0)
+	die("PR_CAP_AMBIENT: %m");
+    }
+  else
+    {
+      if (setresuid(box_uid, box_uid, box_uid) < 0)
+	die("setresuid: %m");
+    }
   setpgrp();
   if (tty_hack && isatty(1))
     {
