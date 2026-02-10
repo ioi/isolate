@@ -1,7 +1,7 @@
 /*
  *	A Process Isolator based on Linux Containers
  *
- *	(c) 2012-2024 Martin Mares <mj@ucw.cz>
+ *	(c) 2012-2026 Martin Mares <mj@ucw.cz>
  *	(c) 2012-2014 Bernard Blackham <bernard@blackham.com.au>
  */
 
@@ -29,16 +29,6 @@
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
-
-/* May not be defined in older glibc headers */
-#ifndef MS_PRIVATE
-#warning "Working around old glibc: no MS_PRIVATE"
-#define MS_PRIVATE (1 << 18)
-#endif
-#ifndef MS_REC
-#warning "Working around old glibc: no MS_REC"
-#define MS_REC     (1 << 14)
-#endif
 
 /*
  * Theory of operation
