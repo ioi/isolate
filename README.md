@@ -33,6 +33,8 @@ To compile Isolate, you need:
 
   - headers for the libcap library (usually available in a libcap-dev package)
 
+  - headers for the libseccomp library (libseccomp-dev)
+
   - headers for the libsystemd library (libsystemd-dev package) for compilation
     of isolate-cg-keeper
 

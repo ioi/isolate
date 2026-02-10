@@ -29,6 +29,10 @@ subid_user = isolate
 # first_gid = 60000
 # num_boxes = 1000
 
+# A bit mask of system call restrictions (default: all restricted, 0=none restricted)
+# See the section "System call restrictions" in man isolate.
+# syscall_flags = 65535
+
 # Only root can create new sandboxes (default: 0=everybody can)
 #restricted_init = 1
 

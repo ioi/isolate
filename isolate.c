@@ -14,6 +14,7 @@
 #include <grp.h>
 #include <limits.h>
 #include <sched.h>
+#include <seccomp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -810,6 +811,91 @@ setup_rlimits(void)
 #undef RLIM
 }
 
+static void
+setup_seccomp(void)
+{
+  /*
+   * For a long time, we were proud that with proper namespacing, all
+   * syscalls can be permitted. Unfortunatly, it is not strictly true
+   * because some syscalls operate on objects that are not namespaced.
+   * We install a simple seccomp filter to disallow these syscalls.
+   */
+
+  if (!cf_syscall_flags)
+    return;
+
+  int err;
+
+  scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_ALLOW);
+  if (!ctx)
+    die("seccomp_init failed");
+
+  /*
+   * Disable keyctl(), because it can be used to establish system-wide
+   * persistent memory.
+   */
+  if (cf_syscall_flags & CF_SYSCALL_KEYCTL)
+    {
+      err = seccomp_rule_add(ctx, SCMP_ACT_ERRNO(ENOSYS), SCMP_SYS(keyctl), 0);
+      if (err < 0)
+	die("seccomp_rule_add: %s", strerror(-err));
+    }
+
+  /*
+   * Disable creation of AF_VSOCK sockets, which are not namespaced, so they
+   * can be used to cross boundaries between sandboxes.
+   */
+  if (cf_syscall_flags & CF_SYSCALL_VSOCK)
+    {
+      err = seccomp_rule_add(ctx, SCMP_ACT_ERRNO(EAFNOSUPPORT), SCMP_SYS(socket), 1, SCMP_A0(SCMP_CMP_EQ, AF_VSOCK));
+      if (err < 0)
+	die("seccomp_rule_add: %s", strerror(-err));
+    }
+
+  /*
+   * Disable several fcntl commands which can be used as a side channel
+   * when an inode is shared between sandboxes (even read-only).
+   *
+   * Similarly for flock.
+   */
+  if (cf_syscall_flags & CF_SYSCALL_FCNTL)
+    {
+      static const int fcntl_cmds[] = {
+	  F_SETLK,
+	  F_SETLKW,
+	  F_OFD_SETLK,
+	  F_OFD_SETLKW,
+	  F_SETLEASE,
+	  F_NOTIFY,
+	  -1,
+      };
+      for (int i=0; fcntl_cmds[i] >= 0; i++)
+	{
+	  err = seccomp_rule_add(ctx, SCMP_ACT_ERRNO(EPERM), SCMP_SYS(fcntl), 1, SCMP_A1(SCMP_CMP_EQ, fcntl_cmds[i]));
+	  if (err < 0)
+	    die("seccomp_rule_add: %s", strerror(-err));
+	}
+
+      err = seccomp_rule_add(ctx, SCMP_ACT_ERRNO(ENOSYS), SCMP_SYS(flock), 0);
+      if (err < 0)
+	die("seccomp_rule_add: %s", strerror(-err));
+    }
+
+  if (verbose > 2)
+    {
+      // At verbosity level 3, we log the compiled filter
+      fprintf(stderr, "=== Compiled syscall filter ===\n");
+      err = seccomp_export_pfc(ctx, 2);
+      if (err < 0)
+	die("seccomp_export_pfc: %s", strerror(-err));
+      fprintf(stderr, "=== END ===\n");
+    }
+
+  err = seccomp_load(ctx);
+  if (err < 0)
+    die("seccomp_load: %s", strerror(-err));
+}
+
 static int
 box_inside(char **args)
 {
@@ -818,6 +904,7 @@ box_inside(char **args)
   setup_net();
   setup_rlimits();
   setup_credentials();
+  setup_seccomp();
   setup_fds();
   char **env = setup_environment();
 

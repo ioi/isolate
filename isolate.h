@@ -1,7 +1,7 @@
 /*
  *	Process Isolator
  *
- *	(c) 2012-2024 Martin Mares <mj@ucw.cz>
+ *	(c) 2012-2026 Martin Mares <mj@ucw.cz>
  *	(c) 2012-2014 Bernard Blackham <bernard@blackham.com.au>
  */
 
@@ -93,6 +93,14 @@ extern int cf_first_uid;
 extern int cf_first_gid;
 extern int cf_num_boxes;
 extern int cf_restricted_init;
+extern int cf_syscall_flags;
+
+enum cf_syscall_flags {
+  CF_SYSCALL_KEYCTL = 1,
+  CF_SYSCALL_VSOCK = 2,
+  CF_SYSCALL_FCNTL = 4,
+  CF_SYSCALL_ALL = 0xffff,
+};
 
 struct cf_per_box {
   struct cf_per_box *next;

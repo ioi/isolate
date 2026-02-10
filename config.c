@@ -21,6 +21,7 @@ int cf_first_uid;
 int cf_first_gid;
 int cf_num_boxes;
 int cf_restricted_init;
+int cf_syscall_flags = CF_SYSCALL_ALL;
 
 static int line_number;
 static struct cf_per_box *per_box_configs;
@@ -69,6 +70,8 @@ cf_entry_toplevel(char *key, char *val)
     cf_num_boxes = cf_int(val);
   else if (!strcmp(key, "restricted_init"))
     cf_restricted_init = cf_int(val);
+  else if (!strcmp(key, "syscall_flags"))
+    cf_syscall_flags = cf_int(val);
   else
     cf_err("Unknown configuration item");
 }
@@ -178,7 +181,7 @@ cf_check(void)
     {
       printf("Config: box_root=%s lock_root=%s cg_root=%s\n", cf_box_root, cf_lock_root, cf_cg_root);
       printf("Config: first_uids=%d first_gid=%d num_boxes=%d\n", cf_first_uid, cf_first_gid, cf_num_boxes);
-      printf("Config: restricted_init=%d\n", cf_restricted_init);
+      printf("Config: restricted_init=%d syscall_flags=%d\n", cf_restricted_init, cf_syscall_flags);
     }
 }
 
