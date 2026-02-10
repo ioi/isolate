@@ -1044,7 +1044,7 @@ run(char **argv)
       close_all_fds();
     }
 
-  chowntree("box", box_uid, box_gid, false);
+  chowntree("box", box_uid, box_gid, special_files);
   cleanup_ownership = 1;
 
   setup_pipe(error_pipes, 1);
