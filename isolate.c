@@ -147,7 +147,7 @@ lock_write(void)
 }
 
 static bool
-lock_box(bool is_init)
+lock_box(bool is_init, bool is_cleanup)
 {
   if (!dir_exists(cf_lock_root))
     make_dir(cf_lock_root);
@@ -198,7 +198,7 @@ lock_box(bool is_init)
     {
       if (n > 0)
 	{
-	  if (!lock.is_initialized)
+	  if (!lock.is_initialized && !is_cleanup)
 	    die("This box was not initialized properly");
 	  return true;
 	}
@@ -938,7 +938,7 @@ init(void)
   if (cf_restricted_init && !invoked_by_root)
     die("New sandboxes can be created only by root");
 
-  lock_box(true);
+  lock_box(true, false);
 
   do_cleanup();
 
@@ -963,7 +963,7 @@ init(void)
 static void
 cleanup(void)
 {
-  if (!lock_box(false))
+  if (!lock_box(false, true))
     msg("Nothing to do -- box did not exist\n");
   else
     {
@@ -1022,7 +1022,7 @@ find_box_pid(void)
 static void
 run(char **argv)
 {
-  if (!lock_box(false))
+  if (!lock_box(false, false))
     die("Box not found, did you run `%s --init'?", self_name());
 
   if (chdir(box_dir) < 0)
