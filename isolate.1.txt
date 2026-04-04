@@ -305,6 +305,9 @@ The following options can be useful in special cases.
 	for regular users, usually in conjunction with the *restricted_init* option in
 	the configuration file.
 
+*--check-config*::
+	Parse configuration, check that it is valid, and exit.
+
 META-FILES
 ----------
 The meta-file contains miscellaneous meta-information on execution of the

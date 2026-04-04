@@ -1137,6 +1137,7 @@ Commands:\n\
     --init\t\tInitialize sandbox (and its control group when --cg is used)\n\
     --run -- <cmd> ...\tRun given command within sandbox\n\
     --cleanup\t\tClean up sandbox\n\
+    --check-config\tCheck configuration file and exit\n\
     --print-cg-root\tPrint the root of cgroup hierarchy\n\
     --version\t\tDisplay program version and configuration\n\
 ");
@@ -1160,6 +1161,7 @@ enum opt_code {
   OPT_AS_UID,
   OPT_AS_GID,
   OPT_PRINT_CG_ROOT,
+  OPT_CHECK_CONFIG,
 };
 
 static const char short_opts[] = "b:c:d:DeE:f:i:k:m:M:n:o:p::q:r:st:vw:x:";
@@ -1171,6 +1173,7 @@ static const struct option long_opts[] = {
   { "chdir",		1, NULL, 'c' },
   { "cg",		0, NULL, OPT_CG },
   { "cg-mem",		1, NULL, OPT_CG_MEM },
+  { "check-config",	0, NULL, OPT_CHECK_CONFIG },
   { "cleanup",		0, NULL, OPT_CLEANUP },
   { "core",		1, NULL, OPT_CORE },
   { "dir",		1, NULL, 'd' },
@@ -1315,6 +1318,7 @@ main(int argc, char **argv)
       case OPT_CLEANUP:
       case OPT_VERSION:
       case OPT_PRINT_CG_ROOT:
+      case OPT_CHECK_CONFIG:
 	if (!mode || (int) mode == c)
 	  mode = c;
 	else
@@ -1361,6 +1365,11 @@ main(int argc, char **argv)
   if (mode == OPT_VERSION)
     {
       show_version();
+      return 0;
+    }
+  if (mode == OPT_CHECK_CONFIG)
+    {
+      cf_parse();
       return 0;
     }
 
