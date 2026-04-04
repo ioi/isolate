@@ -1,7 +1,7 @@
 /*
  *	Process Isolator -- Configuration File
  *
- *	(c) 2016--2023 Martin Mares <mj@ucw.cz>
+ *	(c) 2016--2026 Martin Mares <mj@ucw.cz>
  */
 
 #include "isolate.h"
@@ -16,6 +16,7 @@
 char *cf_box_root;
 char *cf_lock_root;
 char *cf_cg_root;
+static char *cf_subid_user;
 int cf_first_uid;
 int cf_first_gid;
 int cf_num_boxes;
@@ -58,6 +59,8 @@ cf_entry_toplevel(char *key, char *val)
     cf_lock_root = cf_string(val);
   else if (!strcmp(key, "cg_root"))
     cf_cg_root = cf_string(val);
+  else if (!strcmp(key, "subid_user"))
+    cf_subid_user = cf_string(val);
   else if (!strcmp(key, "first_uid"))
     cf_first_uid = cf_int(val);
   else if (!strcmp(key, "first_gid"))
@@ -99,15 +102,76 @@ cf_entry(char *key, char *val)
     }
 }
 
+static int
+find_subid(const char *sub_file, const char *user, int *num_ids)
+{
+  FILE *f = fopen(sub_file, "r");
+  if (!f)
+    die("Cannot open %s: %m", sub_file);
+
+  char *line = NULL;
+  size_t line_n = 0;
+  while (getline(&line, &line_n, f) >= 0)
+    {
+      char *fields[4];
+      char *c = line;
+      for (uint i=0; i<4; i++)
+	{
+	  fields[i] = c;
+	  while (*c && *c != '\n' && *c != ':')
+	    c++;
+	  if (*c)
+	    *c++ = 0;
+	}
+
+      if (!strcmp(fields[0], user))
+	{
+	  int start = atoi(fields[1]);
+	  *num_ids = atoi(fields[2]);
+	  fclose(f);
+	  free(line);
+	  return start;
+	}
+    }
+
+  die("User %s not found in %s", user, sub_file);
+}
+
+static void
+cf_find_ids(void)
+{
+  if (cf_subid_user)
+    {
+      if (cf_first_uid || cf_first_gid)
+	die("Configuration must not specify both subid_user and first_uid/first_gid");
+
+      int num_uids, num_gids;
+      cf_first_uid = find_subid("/etc/subuid", cf_subid_user, &num_uids);
+      cf_first_gid = find_subid("/etc/subuid", cf_subid_user, &num_gids);
+
+      if (!cf_num_boxes)
+	cf_num_boxes = (num_uids < num_gids) ? num_uids : num_gids;
+      else
+	{
+	  if (num_uids < cf_num_boxes)
+	    die("Configured num_boxes=%d, but only %d subuids are available", cf_num_boxes, num_uids);
+	  if (num_gids < cf_num_boxes)
+	    die("Configured num_boxes=%d, but only %d subgids are available", cf_num_boxes, num_gids);
+	}
+    }
+  else
+    {
+      if (!cf_num_boxes || !cf_first_uid || !cf_first_gid)
+	die("Configuration must specify either subuid_user, or first_uid/first_gid/num_boxes");
+    }
+}
+
 static void
 cf_check(void)
 {
   if (!cf_box_root ||
       !cf_lock_root ||
-      !cf_cg_root ||
-      !cf_first_uid ||
-      !cf_first_gid ||
-      !cf_num_boxes)
+      !cf_cg_root)
     cf_err("Configuration is not complete");
 }
 
@@ -145,6 +209,7 @@ cf_parse(void)
     }
 
   fclose(f);
+  cf_find_ids();
   cf_check();
 }
 

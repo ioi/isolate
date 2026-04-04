@@ -14,10 +14,20 @@ lock_root = /run/isolate/locks
 # cg_root = /sys/fs/cgroup/isolate.slice/isolate.service
 cg_root = auto:/run/isolate/cgroup
 
-# Block of UIDs and GIDs reserved for sandboxes
-first_uid = 60000
-first_gid = 60000
-num_boxes = 1000
+# There are two ways how to configure the block of UIDs and GIDs
+# used for sandboxes:
+#
+#   - You can refer to blocks assigned in /etc/subuid and /etc/subgid
+#     to the subid_user. Optionally, you may specify an upper limit
+#     on the number of sandboxes (e.g., if you plan to pin sandboxes
+#     to CPUs below).
+#
+#   - You can manually configure first_uid, first_gid, and num_boxes.
+
+subid_user = isolate
+# first_uid = 60000
+# first_gid = 60000
+# num_boxes = 1000
 
 # Only root can create new sandboxes (default: 0=everybody can)
 #restricted_init = 1
