@@ -13,7 +13,13 @@ configure)
 		# we need to have a subuid range assigned which adduser
 		# cannot do for system users. I promise to switch to
 		# system users when somebody teaches adduser better manners. --mj
-		adduser --quiet --disabled-login --ingroup isolate --home /nonexistent --no-create-home --shell /bin/false --comment "" isolate
+		. /etc/os-release
+		if [ "$UBUNTU_CODENAME" = jammy ] ; then
+			ADDUSER_CMT=--gecos
+		else
+			ADDUSER_CMT=--comment
+		fi
+		adduser --quiet --disabled-login --ingroup isolate --home /nonexistent --no-create-home --shell /bin/false $ADDUSER_CMT "" isolate
 	fi
 	dpkg-statoverride --list /usr/bin/isolate >/dev/null 2>&1 ||
 		dpkg-statoverride --update --add root isolate 4754 /usr/bin/isolate
