@@ -1,9 +1,9 @@
 # Makefile for Isolate
-# (c) 2015--2025 Martin Mares <mj@ucw.cz>
+# (c) 2015--2026 Martin Mares <mj@ucw.cz>
 # (c) 2017 Bernard Blackham <bernard@blackham.com.au>
 
-VERSION=2.2.1
-YEAR=2025
+VERSION=2.3
+YEAR=2026
 
 PROGRAMS=isolate isolate-check-environment isolate-cg-keeper
 MANPAGES=isolate.1 isolate-check-environment.8 isolate-cg-keeper.8

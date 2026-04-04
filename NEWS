@@ -1,3 +1,9 @@
+Version 2.3  [2026-04-04]
+
+  *  The UID and GID range for the sandboxes is obtained from /etc/sub[ug]ids
+     entries of a configured user. The old method of configuring the
+     ranges explicitly is still supported, but no longer the default.
+
 Version 2.2.1  [2025-09-29]
 
   *  Fixed the check for asymmetric cores in isolate-check-environment.
