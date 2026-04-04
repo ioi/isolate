@@ -1,3 +1,4 @@
 #!/bin/bash
 set -e
 apt install -y ./isolate_*.deb
+isolate --check-config
