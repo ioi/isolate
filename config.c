@@ -173,6 +173,13 @@ cf_check(void)
       !cf_lock_root ||
       !cf_cg_root)
     cf_err("Configuration is not complete");
+
+  if (verbose > 1)
+    {
+      printf("Config: box_root=%s lock_root=%s cg_root=%s\n", cf_box_root, cf_lock_root, cf_cg_root);
+      printf("Config: first_uids=%d first_gid=%d num_boxes=%d\n", cf_first_uid, cf_first_gid, cf_num_boxes);
+      printf("Config: restricted_init=%d\n", cf_restricted_init);
+    }
 }
 
 void

@@ -16,6 +16,8 @@
 
 #define CGROUP_FS "/sys/fs/cgroup"
 
+int verbose;	// Not set, but referenced by config.c
+
 void NONRET __attribute__((format(printf,1,2)))
 die(char *msg, ...)
 {
