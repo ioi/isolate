@@ -60,19 +60,21 @@ isolate.o: CFLAGS += $(CFLAGS_BUILD)
 config.o: CFLAGS += -DCONFIG_FILE='"$(CONFIG)"'
 isolate-cg-keeper.o: CFLAGS += $(SYSTEMD_CFLAGS)
 
+ASCIIDOC_OPTIONS=-a CONFIG_PATH=$(CONFIG)
+
 %.1: %.1.txt
-	a2x -f manpage $<
+	a2x -f manpage $(ASCIIDOC_OPTIONS) $<
 
 %.8: %.8.txt
-	a2x -f manpage $<
+	a2x -f manpage $(ASCIIDOC_OPTIONS) $<
 
 # The dependency on %.1 is there to serialize both calls of asciidoc,
 # which does not name temporary files safely.
 %.1.html: %.1.txt %.1
-	a2x -f xhtml -D . $<
+	a2x -f xhtml -D . $(ASCIIDOC_OPTIONS) $<
 
 %.8.html: %.8.txt %.8
-	a2x -f xhtml -D . $<
+	a2x -f xhtml -D . $(ASCIIDOC_OPTIONS) $<
 
 %: %.in
 	sed "s|@SBINDIR@|$(SBINDIR)|g; s|@BOXDIR@|$(BOXDIR)|g" <$< >$@

@@ -370,7 +370,7 @@ have to be careful.
 Isolate is designed to run setuid to root. The sub-process inside the sandbox
 then switches to a non-privileged user ID (different for each *--box-id*).
 The range of UIDs available and several filesystem paths are set in a configuration
-file, by default located in /usr/local/etc/isolate.
+file, by default located in {CONFIG_PATH}.
 
 For control group mode:
 
