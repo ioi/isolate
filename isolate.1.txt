@@ -451,6 +451,42 @@ properly accounted for.
 
 See further suggestions in the https://ioi.github.io/checklist/[IOI Technical Checklist].
 
+SYSTEM CALL RESTRICTIONS
+------------------------
+In general, Isolate does not limit what operations can the sandboxed process do.
+Instead, it places the process within a set of namespaces which restrict what objects
+can be accessed. E.g., it is allowed to create network sockets, but there is nowhere
+else to connect them to.
+
+However, there are a few special cases of objects that are not properly namespaced
+by the Linux kernel. These objects can be exploited to smuggle information between
+two sandboxes running in parallel, or between two instances of the same sandbox running
+one after another.
+
+To avoid such information leaks, Isolate forbids the use of a few system calls.
+This is controlled by the `syscall_flags` setting in the configuration file,
+which contains a sum of the following flags:
+
+* *Keyrings (flag 1)* -- disables the `keyctl` system call which maintains keyrings
+that store cryptographic material. Keyrings can be used to establish system-wide
+or per-user persistent memory, through which data can be passed between successively
+run sandboxes.
+
+* *Virtual machine sockets (flag 2)* -- disables creation of sockets of the `AF_VSOCK`
+address family. These sockets are intended for communication between virtual
+machines and their hypervisors, but their scope is the whole system. Therefore a vsock
+can be used to pass data between two sandboxes running simultaneously.
+
+* *i-node operations (flag 4)* -- when an inode is accessible in multiple sandboxes
+(e.g., as a part of a read-only bind-mount of `/usr`, or even `/proc/self/ns/uts`),
+file locks on it are shared even across mount namespace boundaries. This can be used
+to leak information between simultaneously running sandboxes. This restriction forbids
+`fcntl` with `F_SETLK`, `F_SETLKW`, `F_OFD_SETLK`, `F_OFD_SETLKW`, `F_SETLEASE`, and
+`F_NOTIFY`, and also `flock`. Unlike the previously mentioned system calls, file locks
+could be possibly required by libraries used by legitimate programs.
+
+By default, all restrictions are in place.
+
 LICENSE
 -------
 Isolate was written by Martin Mares and Bernard Blackham.
