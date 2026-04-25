@@ -50,8 +50,9 @@ try_all_dists ()
 
 	try_dist bookworm amd64
 	try_dist trixie amd64
-	try_dist noble amd64
 	try_dist jammy amd64
+	try_dist noble amd64
+	try_dist resolute amd64
 
 	# Cross-building for amd64 requires qemu-user-static installed
 	try_dist bookworm arm64

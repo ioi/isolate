@@ -1,0 +1,4 @@
+FROM ubuntu:resolute
+
+RUN apt update && apt upgrade -y
+RUN apt install -y --no-install-recommends build-essential debhelper pkg-config libcap-dev libsystemd-dev libseccomp-dev asciidoc xmlto lintian
