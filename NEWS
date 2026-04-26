@@ -1,8 +1,19 @@
+Version 2.4  [2026-04-26]
+
+  *  A seccomp-based system call filter has been added to thwart
+     several potential information leaks across sandbox boundaries.
+     See "System calls restrictions" in the man page for details.
+
+  *  "isolate --check-config -vv" prints parsed configuration.
+
 Version 2.3  [2026-04-04]
 
   *  The UID and GID range for the sandboxes is obtained from /etc/sub[ug]ids
      entries of a configured user. The old method of configuring the
      ranges explicitly is still supported, but no longer the default.
+
+  *  "isolate --check-config" can be used to verify correctness of the
+     configuration file.
 
 Version 2.2.1  [2025-09-29]
 

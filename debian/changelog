@@ -1,3 +1,9 @@
+isolate (2.4) stable; urgency=medium
+
+  * New upstream release.
+
+ -- Martin Mares <mj@ucw.cz>  Sun, 26 Apr 2026 15:04:54 +0200
+
 isolate (2.3) stable; urgency=medium
 
   * New upstream release.
