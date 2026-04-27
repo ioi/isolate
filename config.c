@@ -150,7 +150,7 @@ cf_find_ids(void)
 
       int num_uids, num_gids;
       cf_first_uid = find_subid("/etc/subuid", cf_subid_user, &num_uids);
-      cf_first_gid = find_subid("/etc/subuid", cf_subid_user, &num_gids);
+      cf_first_gid = find_subid("/etc/subgid", cf_subid_user, &num_gids);
 
       if (!cf_num_boxes)
 	cf_num_boxes = (num_uids < num_gids) ? num_uids : num_gids;
