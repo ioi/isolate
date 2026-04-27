@@ -1,3 +1,8 @@
+Version 2.4.1  [2026-04-27]
+
+  *  Fixed a bug in parsing of /etc/sub[ug]id — by mistake,
+     Isolate used /etc/subuid for both user and group IDs.
+
 Version 2.4  [2026-04-26]
 
   *  A seccomp-based system call filter has been added to thwart
