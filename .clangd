@@ -1,0 +1,2 @@
+CompileFlags:
+    Add: [-D_GNU_SOURCE -Wno-parentheses]
