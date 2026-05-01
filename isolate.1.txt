@@ -215,7 +215,7 @@ no setuid binaries). This behavior can be modified using the 'options':
 	Silently ignore the rule if the directory to be bound does not exist.
 
 *fs*::
-	Instead of binding a directory, mount a device-less filesystem called 'in'.
+	Instead of binding a directory, mount a device-less filesystem called 'out'.
 	For example, this can be 'proc' or 'sysfs'.
 
 *tmp*::
