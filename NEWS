@@ -1,3 +1,36 @@
+Version 2.5  [2026-05-01]
+
+  This version fixes several security vulnerabilities discovered
+  by Luca Versari and Google Gemini. None of the vulnerabilities
+  compromises security of the sandbox, but they could be exploited
+  by the user running Isolate to bypass system privilege boundaries.
+
+  *  When opening the meta-file we switched the UID back to the
+     calling user, but not the GID. This could allow the caller to
+     overwrite files that are writeable by the "root" group, or
+     create/rename files in directories writeable by it.
+
+     When evaluating severity of this problem, we looked for such
+     files in typical Linux installations. Only a few cases were
+     found: TeXlive caches, /dev/uinput (which could be possibly
+     used to inject keystrokes), several configuration knobs in /sys
+     (where the content written is unlikely to be syntactically
+     correct) and triggers of removal of PCI devices (which can
+     cause a denial-of-service attack).
+
+  *  Although we dropped privileges properly when bind-mounting a directory,
+     we did not in the preliminary check of existence used with the "maybe"
+     option. This provided an oracle for testing existence of directories
+     behind path components unreachable to the calling user.
+
+  *  Directory rules allowed mounting of arbitrary deviceless
+     filesystems. We are not sure if all of them are safe to expose,
+     so we limit the filesystems to a set of safe ones now. If you need
+     to expand the list, please let us know.
+
+  Besides the security fixes, we improved robustness, error
+  reporting, and documentation at several places.
+
 Version 2.4.1  [2026-04-27]
 
   *  Fixed a bug in parsing of /etc/sub[ug]id — by mistake,
