@@ -250,6 +250,15 @@ parse_dir_option(char *opt, unsigned int *dest)
   return false;
 }
 
+static bool
+valid_filesystem_p(const char *fs)
+{
+  return (!strcmp(fs, "proc") ||
+          !strcmp(fs, "sysfs") ||
+          !strcmp(fs, "tmpfs") ||
+          !strcmp(fs, "devpts"));
+}
+
 static const char *
 set_dir_action_ext(const char *arg, unsigned int ext_flags)
 {
@@ -283,8 +292,8 @@ set_dir_action_ext(const char *arg, unsigned int ext_flags)
     {
       if (!eq)
 	return "Missing filesystem name";
-      if (strchr(eq, '/'))
-	return "Filesystem name must not contain a slash";
+      if (!valid_filesystem_p(eq))
+	return "This filesystem is not supported";
       return add_dir_rule(copy, eq, flags);
     }
   else if (flags & DIR_FLAG_TMP)

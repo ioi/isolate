@@ -216,7 +216,8 @@ no setuid binaries). This behavior can be modified using the 'options':
 
 *fs*::
 	Instead of binding a directory, mount a device-less filesystem called 'out'.
-	For example, this can be 'proc' or 'sysfs'.
+	Currently, only the following filesystems are supported:
+	'proc', 'sysfs', 'tmpfs', 'devpts'.
 
 *tmp*::
 	Bind a freshly created temporary directory writeable for the sandbox user.
