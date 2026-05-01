@@ -35,7 +35,7 @@ extern gid_t box_gid, orig_gid;
 /* util.c */
 
 void *xmalloc(size_t size);
-char *xstrdup(char *str);
+char *xstrdup(const char *str);
 char * __attribute__((format(printf,1,2))) xsprintf(const char *fmt, ...);
 
 void timespec_sub(const struct timespec *a, const struct timespec *b, struct timespec *result);

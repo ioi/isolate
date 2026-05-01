@@ -1,7 +1,7 @@
 /*
  *	Process Isolator -- Utility Functions
  *
- *	(c) 2012-2023 Martin Mares <mj@ucw.cz>
+ *	(c) 2012-2026 Martin Mares <mj@ucw.cz>
  *	(c) 2012-2014 Bernard Blackham <bernard@blackham.com.au>
  */
 
@@ -30,7 +30,7 @@ xmalloc(size_t size)
 }
 
 char *
-xstrdup(char *str)
+xstrdup(const char *str)
 {
   char *p = strdup(str);
   if (!p)
