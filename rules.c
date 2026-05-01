@@ -396,11 +396,17 @@ apply_dir_rules(int with_defaults)
 	  continue;
 	}
 
-      if ((r->flags & DIR_FLAG_MAYBE) && !dir_exists(out))
+      if (r->flags & DIR_FLAG_MAYBE)
 	{
-	  msg("Not binding %s on %s (does not exist)\n", out, r->inside);
-	  r->flags |= DIR_FLAG_DISABLED;
-	  continue;
+	  switch_fsid_to_caller();
+	  bool exists = dir_exists(out);
+	  switch_fsid_back();
+	  if (!exists)
+	    {
+	      msg("Not binding %s on %s (does not exist)\n", out, r->inside);
+	      r->flags |= DIR_FLAG_DISABLED;
+	      continue;
+	    }
 	}
 
       char root_in[1024];
