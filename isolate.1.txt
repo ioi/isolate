@@ -188,10 +188,12 @@ requested by directory rules:
 
 *-d, --dir=*'in'*=*'out'[*:*'options']::
 	Bind the directory 'out' as seen by the caller to the path 'in' inside the sandbox.
+	Multiple options can be separated by colons.
 	If there already was a directory rule for 'in', it is replaced.
 
 *-d, --dir=*'dir'[*:*'options']::
 	Bind the directory +/+'dir' to 'dir' inside the sandbox.
+	Multiple options can be separated by colons.
 	If there already was a directory rule for 'in', it is replaced.
 
 *-d, --dir=*'in'*=*::
