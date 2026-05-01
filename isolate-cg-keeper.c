@@ -122,7 +122,7 @@ setup_cg(void)
     }
 
   struct stat st;
-  if (stat(cg, &st), 0)
+  if (stat(cg, &st) < 0)
     die("Control group root %s does not exist: %m", cg);
 
   char subgroup[1024];
