@@ -7,6 +7,7 @@
 #include "isolate.h"
 
 #include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -105,6 +106,20 @@ cf_entry(char *key, char *val)
     }
 }
 
+static bool
+parse_ugid(const char *src, int *dest)
+{
+  char *end;
+  errno = 0;
+  unsigned long val = strtoul(src, &end, 10);
+  if (errno || end == src || end && *end)
+    return false;
+  if (val > INT_MAX)
+    return false;
+  *dest = val;
+  return true;
+}
+
 static int
 find_subid(const char *sub_file, const char *user, int *num_ids)
 {
@@ -129,8 +144,11 @@ find_subid(const char *sub_file, const char *user, int *num_ids)
 
       if (!strcmp(fields[0], user))
 	{
-	  int start = atoi(fields[1]);
-	  *num_ids = atoi(fields[2]);
+	  int start;
+	  if (!parse_ugid(fields[1], &start))
+	    die("Cannot parse line for user %s in %s: bad range start", user, sub_file);
+	  if (!parse_ugid(fields[2], num_ids))
+	    die("Cannot parse line for user %s in %s: bad range length", user, sub_file);
 	  fclose(f);
 	  free(line);
 	  return start;
