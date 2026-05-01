@@ -47,6 +47,8 @@ void make_dir_for(char *path);
 void chowntree(char *path, uid_t uid, gid_t gid, bool keep_special_files);
 void keep_fd(int fd);
 void close_all_fds(void);
+void switch_fsid_to_caller(void);
+void switch_fsid_back(void);
 
 void meta_open(const char *name);
 void meta_close(void);
