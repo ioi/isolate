@@ -210,13 +210,13 @@ sanitize_dir_path(char *path)
   return path;
 }
 
-static int
+static const char *
 add_dir_rule(char *in, char *out, unsigned int flags)
 {
   // Make sure that "in" does not try to escape the box
   in = sanitize_dir_path(in);
   if (!in)
-    return 0;
+    return "Invalid path";
 
   // Override an existing rule
   struct dir_rule *r;
@@ -235,52 +235,62 @@ add_dir_rule(char *in, char *out, unsigned int flags)
     }
   r->outside = out;
   r->flags = flags;
-  return 1;
+  return NULL;
 }
 
-static unsigned int
-parse_dir_option(char *opt)
+static bool
+parse_dir_option(char *opt, unsigned int *dest)
 {
   for (unsigned int i = 0; i < ARRAY_SIZE(dir_flag_names); i++)
     if (!strcmp(opt, dir_flag_names[i]))
-      return 1U << i;
-  die("Unknown directory option %s", opt);
+      {
+	*dest = 1U << i;
+	return true;
+      }
+  return false;
 }
 
-static int
-set_dir_action_ext(char *arg, unsigned int ext_flags)
+static const char *
+set_dir_action_ext(const char *arg, unsigned int ext_flags)
 {
-  arg = xstrdup(arg);
+  char *copy = xstrdup(arg);
 
-  char *colon = strchr(arg, ':');
+  char *colon = strchr(copy, ':');
   unsigned int flags = ext_flags;
   while (colon)
     {
-      *colon++ = 0;
-      char *next = strchr(colon, ':');
+      *colon = 0;
+      char *opt = colon + 1;
+      char *next = strchr(opt, ':');
       if (next)
 	*next = 0;
-      flags |= parse_dir_option(colon);
+      unsigned flag;
+      if (!parse_dir_option(opt, &flag))
+	// We leak memory, but we are going to die anyway
+	return xsprintf("Unknown option '%s'", opt);
+      flags |= flag;
       colon = next;
     }
 
-  char *eq = strchr(arg, '=');
+  char *eq = strchr(copy, '=');
   if (eq)
     *eq++ = 0;
 
   if ((flags & DIR_FLAG_FS) && (flags & DIR_FLAG_TMP))
-    return 0;
+    return "Flags 'fs' and 'tmp' are mutually exclusive";
 
   if (flags & DIR_FLAG_FS)
     {
-      if (!eq || strchr(eq, '/'))
-	return 0;
-      return add_dir_rule(arg, eq, flags);
+      if (!eq)
+	return "Missing filesystem name";
+      if (strchr(eq, '/'))
+	return "Filesystem name must not contain a slash";
+      return add_dir_rule(copy, eq, flags);
     }
   else if (flags & DIR_FLAG_TMP)
     {
       if (eq)
-	return 0;
+	return "Temporary directory mounts do not have a right-hand side";
       /*
        *  Construct an outside temporary directory, which will be later
        *  chowned to box_uid. The hierarchy of these directories is intentionally
@@ -288,38 +298,40 @@ set_dir_action_ext(char *arg, unsigned int ext_flags)
        *  tampered with in a previous run of the sandbox.
        */
       char out[1024];
-      snprintf(out, sizeof(out), "./tmp/%s", arg);
+      snprintf(out, sizeof(out), "./tmp/%s", copy);
       for (char *p = out + strlen("./tmp/"); *p; p++)
 	if (*p == '/')
 	  *p = ':';		// This is safe, there were no colons in "out"
-      return add_dir_rule(arg, xstrdup(out), flags | DIR_FLAG_RW);
+      return add_dir_rule(copy, xstrdup(out), flags | DIR_FLAG_RW);
     }
   else if (eq)
     {
       if (!eq[0])
-	return add_dir_rule(arg, NULL, flags);
+	return add_dir_rule(copy, NULL, flags);
       if (eq[0] != '/' && strncmp(eq, "./", 2))
-	return 0;
-      return add_dir_rule(arg, eq, flags);
+	return "Right-hand side must start with '/' or './'";
+      return add_dir_rule(copy, eq, flags);
     }
   else
     {
-      char *out = xmalloc(1 + strlen(arg) + 1);
-      sprintf(out, "/%s", arg);
-      return add_dir_rule(arg, out, flags);
+      char *out = xmalloc(1 + strlen(copy) + 1);
+      sprintf(out, "/%s", copy);
+      return add_dir_rule(copy, out, flags);
     }
 }
 
-int
-set_dir_action(char *arg)
+const char *
+set_dir_action(const char *arg)
 {
   return set_dir_action_ext(arg, 0);
 }
 
-static int
-set_dir_action_default(char *arg)
+static void
+set_dir_action_default(const char *arg)
 {
-  return set_dir_action_ext(arg, DIR_FLAG_DEFAULT);
+  const char *err = set_dir_action_ext(arg, DIR_FLAG_DEFAULT);
+  if (err)
+    die("Error parsing built-in directory rule '%s': %s", arg, err);
 }
 
 void

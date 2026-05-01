@@ -1315,6 +1315,7 @@ main(int argc, char **argv)
   int c;
   int require_cg = 0;
   char *sep;
+  const char *err;
   enum opt_code mode = 0;
 
   init_dir_rules();
@@ -1332,8 +1333,9 @@ main(int argc, char **argv)
 	cg_enable = 1;
 	break;
       case 'd':
-	if (!set_dir_action(optarg))
-	  usage("Invalid directory rule specified: %s\n", optarg);
+	err = set_dir_action(optarg);
+	if (err)
+	  usage("Invalid directory rule '%s': %s\n", optarg, err);
 	break;
       case 'D':
         default_dirs = 0;
