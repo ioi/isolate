@@ -1170,6 +1170,8 @@ usage(const char *msg, ...)
       va_start(args, msg);
       vfprintf(stderr, msg, args);
       va_end(args);
+      fprintf(stderr, "Try 'isolate' --help' for more information.\n");
+      exit(2);
     }
   printf("\
 Usage: isolate [<options>] <command>\n\
