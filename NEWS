@@ -1,3 +1,20 @@
+Version 2.6  [2026-05-25]
+
+  *  /dev/shm is no longer shared among sandboxes. It was never
+     intentional, but it happened when we made all mounts recursive
+     by default and it provided a side channel between sandboxes.
+
+     The default directory rules now bind-mount /dev non-recursively
+     and they mount a fresh instance of tmpfs on /dev/shm.
+
+  *  The system call filter disables io_uring by default, since it can
+     be also used to create AF_VSOCK sockets. It is unlikely that there
+     is a competition-related program which requires the uring.
+
+  *  By default, the system call filter rejected syscalls on non-native
+     architectures (e.g., 32-bit syscalls on amd64 systems). We added
+     a flag for allowing legacy architectures.
+
 Version 2.5  [2026-05-01]
 
   This version fixes several security vulnerabilities discovered
