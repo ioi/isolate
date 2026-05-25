@@ -199,7 +199,12 @@ requested by directory rules:
 *-d, --dir=*'in'*=*::
 	Remove a directory rule for the path 'in' inside the sandbox.
 
-By default, all directories are bound read-only and restricted (no devices,
+*-D, --no-default-dirs*::
+	Omit the default set of directory rules (see below). Care has to be taken to specify
+	the correct set of rules (using *--dir*) for the executed program to run
+	correctly. In particular, +/box+ has to be bound.
+
+Unless specified otherwise, all directories are bound read-only and restricted (no devices,
 no setuid binaries). This behavior can be modified using the 'options':
 
 *rw*::
@@ -227,15 +232,23 @@ no setuid binaries). This behavior can be modified using the 'options':
 	Do not bind recursively. Without this option, mount points in the outside
 	directory tree are automatically propagated to the sandbox.
 
-Unless *--no-default-dirs* is specified, the default set of directory rules binds +/bin+,
-+/dev+ (with devices allowed), +/lib+, +/lib64+ (if it exists), and +/usr+. It also binds
-the working directory to +/box+ (read-write), mounts the proc filesystem at +/proc+, and
-creates a temporary directory +/tmp+.
+Unless *--no-default-dirs* is specified, the following rules are added automatically:
 
-*-D, --no-default-dirs*::
-	Do not bind the default set of directories. Care has to be taken to specify
-	the correct set of rules (using *--dir*) for the executed program to run
-	correctly. In particular, +/box+ has to be bound.
+* +/box+ for the sandbox's working directory (read-write)
+
+* +/bin+ (read-only bind-mount)
+
+* +/dev+ (non-recursive bind-mount with devices allowed)
+
+* +/dev/shm+ (read-write tmpfs)
+
+* +/lib+ and +/lib64+ (read-only bind mount, the latter only if it exists)
+
+* +/proc+ (proc filesystem with only current user's processes visible)
+
+* +/tmp+ (read-write temporary directory)
+
+* +/usr* (read-only bind mount)
 
 The rules are executed in the order in which they are given. Default rules come before
 all user rules. When a rule is replaced, it retains the original position
