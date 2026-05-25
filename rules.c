@@ -1,7 +1,7 @@
 /*
  *	Process Isolator -- Rules
  *
- *	(c) 2012-2025 Martin Mares <mj@ucw.cz>
+ *	(c) 2012-2026 Martin Mares <mj@ucw.cz>
  *	(c) 2012-2014 Bernard Blackham <bernard@blackham.com.au>
  */
 
@@ -348,7 +348,8 @@ init_dir_rules(void)
 {
   set_dir_action_default("box=./box:rw");
   set_dir_action_default("bin");
-  set_dir_action_default("dev:dev");
+  set_dir_action_default("dev:dev:norec");
+  set_dir_action_default("dev/shm=tmpfs:fs:rw");
   set_dir_action_default("lib");
   set_dir_action_default("lib64:maybe");
   set_dir_action_default("proc=proc:fs");
