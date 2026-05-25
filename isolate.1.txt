@@ -505,6 +505,14 @@ could be possibly required by libraries used by legitimate programs.
 operations also allows creation of sockets with arbitrary address families. Since this
 API is unlikely to be used in programming contests, we disable it completely.
 
+* *legacy architectures (flag 16)* -- on some architectures, the kernel can execute
+code for non-native architectures (e.g., 32-bit binaries on 64-bit systems). This is
+not a security risk per se, but it brings extra complexity to already non-trivial
+system call filtering. Since programming contests seldom use non-native architectures, we
+recommend not allowing them by default and turning this bit off only if necessary.
+At the moment, the only legacy architecture recognized is x86 (i386) on x86_64 (amd64) systems,
+please let us know if you need more.
+
 By default, all restrictions are in place.
 
 LICENSE

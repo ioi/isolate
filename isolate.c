@@ -831,6 +831,27 @@ setup_seccomp(void)
     die("seccomp_init failed");
 
   /*
+   * Consider allowing syscalls for legacy architectures.
+   */
+  if (!(cf_syscall_flags & CF_SYSCALL_LEGACY_ARCH))
+    {
+      uint32_t native_arch = seccomp_arch_native();
+      if (native_arch == SCMP_ARCH_X86_64)
+	{
+	  if (verbose > 1)
+	    fprintf(stderr, "Seccomp: Adding legacy architecture x86\n");
+	  err = seccomp_arch_add(ctx, SCMP_ARCH_X86);
+	  if (err < 0 && verbose > 1)
+	    fprintf(stderr, "Seccomp: Cannot add architecture: %s", strerror(-err));
+	}
+      else
+	{
+	  if (verbose > 1)
+	    fprintf(stderr, "Seccomp: No legacy architectures known\n");
+	}
+    }
+
+  /*
    * Disable keyctl(), because it can be used to establish system-wide
    * persistent memory.
    */
