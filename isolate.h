@@ -101,6 +101,7 @@ enum cf_syscall_flags {
   CF_SYSCALL_KEYCTL = 1,
   CF_SYSCALL_VSOCK = 2,
   CF_SYSCALL_FCNTL = 4,
+  CF_SYSCALL_IO_URING = 8,
   CF_SYSCALL_ALL = 0xffff,
 };
 

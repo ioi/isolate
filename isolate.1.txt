@@ -501,6 +501,10 @@ to leak information between simultaneously running sandboxes. This restriction f
 `F_NOTIFY`, and also `flock`. Unlike the previously mentioned system calls, file locks
 could be possibly required by libraries used by legitimate programs.
 
+* *io_uring (flag 8)* -- the io_uring kernel API for asynchronous submission of I/O
+operations also allows creation of sockets with arbitrary address families. Since this
+API is unlikely to be used in programming contests, we disable it completely.
+
 By default, all restrictions are in place.
 
 LICENSE

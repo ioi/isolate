@@ -881,6 +881,17 @@ setup_seccomp(void)
 	die("seccomp_rule_add: %s", strerror(-err));
     }
 
+  /*
+   * Disable io_uring_setup() as the io_uring can be used to create sockets
+   * and it's unlikely to be used in programming contests.
+   */
+  if (cf_syscall_flags & CF_SYSCALL_IO_URING)
+    {
+      err = seccomp_rule_add(ctx, SCMP_ACT_ERRNO(ENOSYS), SCMP_SYS(io_uring_setup), 0);
+      if (err < 0)
+	die("seccomp_rule_add: %s", strerror(-err));
+    }
+
   if (verbose > 2)
     {
       // At verbosity level 3, we log the compiled filter
