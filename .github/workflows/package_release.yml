@@ -1,0 +1,69 @@
+name: package_release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: Tag Name
+        required: false
+        default: unstable
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Get code
+        uses: actions/checkout@v3
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y debhelper pkg-config libcap-dev libpcap-dev libsystemd-dev asciidoc
+      - name: Build debian package
+        run: |
+          make
+          dpkg-buildpackage -us -uc -tc -b
+      - name: Place artifacts in a folder
+        run: |
+          mkdir artifacts
+          mv ../isolate_*_amd64.deb artifacts
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: artifacts
+          path: |
+            ./artifacts/*.deb
+          if-no-files-found: error
+          retention-days: 1
+  publish:
+    needs: [build]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    env:
+      GH_REPO: ${{ github.repository }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v3
+      - name: Set tag name
+        if: github.event_name == 'workflow_dispatch'
+        run: echo "TAG_NAME=${{ github.event.inputs.tag_name }}" >> $GITHUB_ENV
+      - name: Prerelease flag
+        run: |
+          PRERELEASE_FLAG=""
+          case "$TAG_NAME" in
+            unstable)
+              echo "Setting prerelease flag"
+              PRERELEASE_FLAG="--prerelease"
+              ;;
+            *)
+              echo "Not setting prerelease flag"
+              ;;
+          esac
+      - name: Release
+        run: |
+          echo "Publishing to github"
+          gh release create ${PRERELEASE_FLAG} "$TAG_NAME" || echo "Release creation failed, but continuing..." && true
+          gh release upload --clobber "$TAG_NAME" artifacts/isolate_*_amd64.deb
