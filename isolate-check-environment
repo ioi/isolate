@@ -115,7 +115,9 @@ cgroup_check() {
 }
 
 # Check that cgroups are enabled.
-if ! cg_root=$(isolate --print-cg-root 2>/dev/null) ; then
+isolate_bin="$(dirname -- "$0")/isolate"
+[ -x "$isolate_bin" ] || isolate_bin=isolate
+if ! cg_root=$("$isolate_bin" --print-cg-root 2>/dev/null) ; then
     warn "cgroup root not found. isolate --cg cannot be used."
     exit_status=1
 else
