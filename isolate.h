@@ -79,8 +79,8 @@ void cg_remove(void);
 // Prepare the box CG for use (during isolate --run)
 void cg_setup(void);
 
-// Move the current process to the box CG
-void cg_enter(void);
+// fork(), but spawn the child inside the box CG
+pid_t cg_fork_and_enter(void);
 
 // Obtain statistics on the box CG
 int cg_get_run_time_ms(void);

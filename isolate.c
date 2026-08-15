@@ -934,7 +934,6 @@ setup_seccomp(void)
 static int
 box_inside(char **args)
 {
-  cg_enter();
   setup_root();
   setup_net();
   setup_rlimits();
@@ -976,10 +975,8 @@ box_proxy(void *arg)
   lock_close();
   reset_signals();
 
-  pid_t inside_pid = fork();
-  if (inside_pid < 0)
-    die("Cannot run process, fork failed: %m");
-  else if (!inside_pid)
+  pid_t inside_pid = cg_fork_and_enter();
+  if (!inside_pid)
     {
       close(status_pipes[1]);
       box_inside(args);

@@ -11,10 +11,14 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <linux/sched.h>
+#include <sched.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 #include <unistd.h>
 
 static char cg_name[256];
@@ -223,27 +227,35 @@ cg_create(void)
     die("Failed to create control group %s: %m", path);
 }
 
-void
-cg_enter(void)
+pid_t
+cg_fork_and_enter(void)
 {
-  if (!cg_enable)
-    return;
+  struct clone_args cl_args = {
+    .exit_signal = SIGCHLD,
+    // everything else can be zero
+  };
+  int cg_fd = -1;
 
-  msg("Entering control group %s\n", cg_name);
-
-  cg_write("cgroup.procs", "%d\n", (int) getpid());
-
-  if (cg_memory_limit)
+  if (cg_enable)
     {
-      cg_write("memory.max", "%lld\n", (long long) cg_memory_limit << 10);
-      cg_write("?memory.swap.max", "0\n");
+      char path[PATH_MAX];
+      cg_makepath(path, sizeof(path), NULL);
+      cg_fd = open(path, O_PATH);
+      if (cg_fd < 0)
+	die("Could not open cgroup path: %m");
+
+      cl_args.flags |= CLONE_INTO_CGROUP;
+      cl_args.cgroup = cg_fd;
     }
 
-  struct cf_per_box *cf = cf_current_box();
-  if (cf->cpus)
-    cg_write("cpuset.cpus", "%s", cf->cpus);
-  if (cf->mems)
-    cg_write("cpuset.mems", "%s", cf->mems);
+  pid_t ret = syscall(SYS_clone3, &cl_args, sizeof(cl_args));
+  if (ret < 0)
+    die("Cannot run process, clone failed: %m");
+
+  if (cg_fd >= 0)
+    close(cg_fd);
+
+  return ret;
 }
 
 static int
@@ -286,6 +298,18 @@ cg_setup(void)
 {
   if (!cg_enable)
     return;
+
+  if (cg_memory_limit)
+    {
+      cg_write("memory.max", "%lld\n", (long long) cg_memory_limit << 10);
+      cg_write("?memory.swap.max", "0\n");
+    }
+
+  struct cf_per_box *cf = cf_current_box();
+  if (cf->cpus)
+    cg_write("cpuset.cpus", "%s", cf->cpus);
+  if (cf->mems)
+    cg_write("cpuset.mems", "%s", cf->mems);
 
   /*
    *  The box CG can be used by multiple invocations of "isolate --run",
