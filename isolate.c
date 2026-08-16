@@ -13,6 +13,7 @@
 #include <getopt.h>
 #include <grp.h>
 #include <limits.h>
+#include <linux/sched.h>
 #include <sched.h>
 #include <seccomp.h>
 #include <stdio.h>
@@ -25,6 +26,7 @@
 #include <sys/signal.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 #include <sys/time.h>
 #include <sys/vfs.h>
 #include <sys/wait.h>
@@ -582,7 +584,7 @@ check_timeout(void)
     }
 }
 
-static void
+static void NONRET
 box_keeper(void)
 {
   read_errors_from_fd = error_pipes[0];
@@ -928,7 +930,7 @@ setup_seccomp(void)
     die("seccomp_load: %s", strerror(-err));
 }
 
-static int
+static void NONRET
 box_inside(char **args)
 {
   setup_root();
@@ -960,11 +962,9 @@ setup_orig_credentials(void)
     die("setresuid: %m");
 }
 
-static int
-box_proxy(void *arg)
+static void NONRET
+box_proxy(char **args)
 {
-  char **args = arg;
-
   write_errors_to_fd = error_pipes[1];
   close(error_pipes[0]);
   close(status_pipes[0]);
@@ -1135,7 +1135,7 @@ find_box_pid(void)
   fclose(f);
 }
 
-static void
+static void NONRET
 run(char **argv)
 {
   if (!lock_box(false, false))
@@ -1158,15 +1158,15 @@ run(char **argv)
   setup_signals();
   cg_setup();
 
-  proxy_pid = clone(
-    box_proxy,			// Function to execute as the body of the new process
-    (void*)((uintptr_t)argv & ~(uintptr_t)15),	// Pass our stack, aligned to 16-bytes
-    SIGCHLD | CLONE_NEWIPC | (share_net ? 0 : CLONE_NEWNET) | CLONE_NEWNS | CLONE_NEWPID,
-    argv);			// Pass the arguments
+  struct clone_args cl_args = {
+    .exit_signal = SIGCHLD,
+    .flags = CLONE_NEWIPC | (share_net ? 0 : CLONE_NEWNET) | CLONE_NEWNS | CLONE_NEWPID,
+  };
+  proxy_pid = syscall(SYS_clone3, &cl_args, sizeof(cl_args));
   if (proxy_pid < 0)
     die("Cannot run proxy, clone failed: %m");
   if (!proxy_pid)
-    die("Cannot run proxy, clone returned 0");
+    box_proxy(argv);
 
   pid_t box_pid_inside_ns;
   int n = read(status_pipes[0], &box_pid_inside_ns, sizeof(box_pid_inside_ns));
