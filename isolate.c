@@ -84,6 +84,7 @@ static bool special_files;
 static bool wait_if_busy;
 static int as_uid = -1;
 static int as_gid = -1;
+static int syscall_flags_opt = -1; /* Overrides syscall_flags_cf when != -1 */
 
 int cg_enable;
 int cg_memory_limit;
@@ -821,7 +822,9 @@ setup_seccomp(void)
    * We install a simple seccomp filter to disallow these syscalls.
    */
 
-  if (!cf_syscall_flags)
+  int syscall_flags = syscall_flags_opt == -1 ? cf_syscall_flags : syscall_flags_opt;
+
+  if (!syscall_flags)
     return;
 
   int err;
@@ -833,7 +836,7 @@ setup_seccomp(void)
   /*
    * Consider allowing syscalls for legacy architectures.
    */
-  if (!(cf_syscall_flags & CF_SYSCALL_LEGACY_ARCH))
+  if (!(syscall_flags & CF_SYSCALL_LEGACY_ARCH))
     {
       uint32_t native_arch = seccomp_arch_native();
       if (native_arch == SCMP_ARCH_X86_64)
@@ -855,7 +858,7 @@ setup_seccomp(void)
    * Disable keyctl(), because it can be used to establish system-wide
    * persistent memory.
    */
-  if (cf_syscall_flags & CF_SYSCALL_KEYCTL)
+  if (syscall_flags & CF_SYSCALL_KEYCTL)
     {
       err = seccomp_rule_add(ctx, SCMP_ACT_ERRNO(ENOSYS), SCMP_SYS(keyctl), 0);
       if (err < 0)
@@ -866,7 +869,7 @@ setup_seccomp(void)
    * Disable creation of AF_VSOCK sockets, which are not namespaced, so they
    * can be used to cross boundaries between sandboxes.
    */
-  if (cf_syscall_flags & CF_SYSCALL_VSOCK)
+  if (syscall_flags & CF_SYSCALL_VSOCK)
     {
       err = seccomp_rule_add(ctx, SCMP_ACT_ERRNO(EAFNOSUPPORT), SCMP_SYS(socket), 1, SCMP_A0(SCMP_CMP_EQ, AF_VSOCK));
       if (err < 0)
@@ -879,7 +882,7 @@ setup_seccomp(void)
    *
    * Similarly for flock.
    */
-  if (cf_syscall_flags & CF_SYSCALL_FCNTL)
+  if (syscall_flags & CF_SYSCALL_FCNTL)
     {
       static const int fcntl_cmds[] = {
 	  F_SETLK,
@@ -906,7 +909,7 @@ setup_seccomp(void)
    * Disable io_uring_setup() as the io_uring can be used to create sockets
    * and it's unlikely to be used in programming contests.
    */
-  if (cf_syscall_flags & CF_SYSCALL_IO_URING)
+  if (syscall_flags & CF_SYSCALL_IO_URING)
     {
       err = seccomp_rule_add(ctx, SCMP_ACT_ERRNO(ENOSYS), SCMP_SYS(io_uring_setup), 0);
       if (err < 0)
@@ -1248,6 +1251,7 @@ Options:\n\
 -i, --stdin=<file>\tRedirect stdin from <file>\n\
 -o, --stdout=<file>\tRedirect stdout to <file>\n\
 -p, --processes[=<max>]\tEnable multiple processes (at most <max> of them); needs --cg\n\
+    --syscalls=<flags>\tSet syscall_flags (see \"System call restrictions\" in man isolate)\n\
 -t, --time=<time>\tSet run time limit (seconds, fractions allowed)\n\
     --tty-hack\t\tAllow interactive programs in the sandbox (see man for caveats)\n\
 -v, --verbose\t\tBe verbose (use multiple times for even more verbosity)\n\
@@ -1283,6 +1287,7 @@ enum opt_code {
   OPT_AS_GID,
   OPT_PRINT_CG_ROOT,
   OPT_CHECK_CONFIG,
+  OPT_SYSCALL_FLAGS,
 };
 
 static const char short_opts[] = "b:c:d:DeE:f:i:k:m:M:n:o:p::q:r:st:vw:x:";
@@ -1320,6 +1325,7 @@ static const struct option long_opts[] = {
   { "stderr-to-stdout",	0, NULL, OPT_STDERR_TO_STDOUT },
   { "stdin",		1, NULL, 'i' },
   { "stdout",		1, NULL, 'o' },
+  { "syscalls",	1, NULL, OPT_SYSCALL_FLAGS },
   { "time",		1, NULL, 't' },
   { "tty-hack",		0, NULL, OPT_TTY_HACK },
   { "verbose",		0, NULL, 'v' },
@@ -1478,6 +1484,9 @@ main(int argc, char **argv)
 	break;
       case OPT_AS_GID:
 	as_gid = opt_uint(optarg);
+	break;
+      case OPT_SYSCALL_FLAGS:
+	syscall_flags_opt = opt_uint(optarg);
 	break;
       default:
 	usage(NULL);
