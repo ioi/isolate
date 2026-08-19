@@ -304,6 +304,11 @@ cg_setup(void)
       cg_write("memory.max", "%lld\n", (long long) cg_memory_limit << 10);
       cg_write("?memory.swap.max", "0\n");
     }
+  else
+    {
+      cg_write("memory.max", "max\n");
+      cg_write("?memory.swap.max", "max\n");
+    }
 
   struct cf_per_box *cf = cf_current_box();
   if (cf->cpus)
