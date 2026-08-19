@@ -68,7 +68,7 @@ static int silent;
 static int fsize_limit;
 static int memory_limit;
 static int stack_limit;
-static int open_file_limit = 64;
+static int open_file_limit = 1024;
 static int core_limit;
 int block_quota;
 int inode_quota;
@@ -1240,7 +1240,7 @@ Options:\n\
     --inherit-fds\tInherit all file descriptors of the parent process\n\
 -m, --mem=<size>\tLimit address space to <size> KB\n\
 -M, --meta=<file>\tOutput process information to <file> (name:value)\n\
--n, --open-files=<max>\tLimit number of open files to <max> (default: 64, 0=unlimited)\n\
+-n, --open-files=<max>\tLimit number of open files to <max> (default: 1024, 0=unlimited)\n\
 -q, --quota=<blk>,<ino>\tSet disk quota to <blk> blocks and <ino> inodes\n\
     --share-net\t\tShare network namespace with the parent process\n\
 -s, --silent\t\tDo not print status messages except for fatal errors\n\

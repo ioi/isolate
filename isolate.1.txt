@@ -127,7 +127,7 @@ The following options can limit system resources consumed by the program.
 	If this limit is exceeded, the program receives the SIGSEGV signal.
 
 *-n, --open-files=*'max'::
-	Limit number of open files to 'max'. The default value is 64. Setting this
+	Limit number of open files to 'max'. The default value is 1024. Setting this
 	option to 0 will result in unlimited open files.
 	If this limit is reached, system calls creating file descriptors fail
 	with error EMFILE.
