@@ -1,7 +1,7 @@
 /*
  *	Process Isolator
  *
- *	(c) 2012-2025 Martin Mares <mj@ucw.cz>
+ *	(c) 2012-2026 Martin Mares <mj@ucw.cz>
  *	(c) 2012-2014 Bernard Blackham <bernard@blackham.com.au>
  */
 
@@ -35,7 +35,7 @@ extern gid_t box_gid, orig_gid;
 /* util.c */
 
 void *xmalloc(size_t size);
-char *xstrdup(char *str);
+char *xstrdup(const char *str);
 char * __attribute__((format(printf,1,2))) xsprintf(const char *fmt, ...);
 
 void timespec_sub(const struct timespec *a, const struct timespec *b, struct timespec *result);
@@ -47,6 +47,8 @@ void make_dir_for(char *path);
 void chowntree(char *path, uid_t uid, gid_t gid, bool keep_special_files);
 void keep_fd(int fd);
 void close_all_fds(void);
+void switch_fsid_to_caller(void);
+void switch_fsid_back(void);
 
 void meta_open(const char *name);
 void meta_close(void);
@@ -58,7 +60,7 @@ int set_env_action(char *a0);
 char **setup_environment(void);
 
 void init_dir_rules(void);
-int set_dir_action(char *arg);
+const char *set_dir_action(const char *arg);
 void apply_dir_rules(int with_defaults);
 
 void set_quota(void);
@@ -77,8 +79,8 @@ void cg_remove(void);
 // Prepare the box CG for use (during isolate --run)
 void cg_setup(void);
 
-// Move the current process to the box CG
-void cg_enter(void);
+// fork(), but spawn the child inside the box CG
+pid_t cg_fork_and_enter(void);
 
 // Obtain statistics on the box CG
 int cg_get_run_time_ms(void);
@@ -95,6 +97,16 @@ extern int cf_num_boxes;
 extern int cf_restricted_init;
 extern char *cf_netns_script;
 extern int cf_cap_net_raw;
+extern int cf_syscall_flags;
+
+enum cf_syscall_flags {
+  CF_SYSCALL_KEYCTL = 1,
+  CF_SYSCALL_VSOCK = 2,
+  CF_SYSCALL_FCNTL = 4,
+  CF_SYSCALL_IO_URING = 8,
+  CF_SYSCALL_LEGACY_ARCH = 16,
+  CF_SYSCALL_ALL = 0xffff,
+};
 
 struct cf_per_box {
   struct cf_per_box *next;

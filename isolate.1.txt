@@ -127,7 +127,7 @@ The following options can limit system resources consumed by the program.
 	If this limit is exceeded, the program receives the SIGSEGV signal.
 
 *-n, --open-files=*'max'::
-	Limit number of open files to 'max'. The default value is 64. Setting this
+	Limit number of open files to 'max'. The default value is 1024. Setting this
 	option to 0 will result in unlimited open files.
 	If this limit is reached, system calls creating file descriptors fail
 	with error EMFILE.
@@ -143,9 +143,9 @@ The following options can limit system resources consumed by the program.
 *-q, --quota=*'blocks'*,*'inodes'::
 	Set disk quota to a given number of blocks and inodes. This requires the
 	filesystem to be mounted with support for quotas. Unlike other options,
-	this one must be given to *isolate --init*. Please note that this
-	currently works only on the ext family of filesystems (other filesystems
-	use other interfaces for setting quotas).
+	this one must be given to *isolate --init*. Please note that filesystems differ
+	in what quotas they support and how these are controlled. The interface used
+	by Isolate has been tested with the ext family of filesystems and tmpfs.
 	If the quota is reached, system calls expanding files fail with error EDQUOT.
 
 *--core=*'size'::
@@ -188,16 +188,23 @@ requested by directory rules:
 
 *-d, --dir=*'in'*=*'out'[*:*'options']::
 	Bind the directory 'out' as seen by the caller to the path 'in' inside the sandbox.
+	Multiple options can be separated by colons.
 	If there already was a directory rule for 'in', it is replaced.
 
 *-d, --dir=*'dir'[*:*'options']::
 	Bind the directory +/+'dir' to 'dir' inside the sandbox.
+	Multiple options can be separated by colons.
 	If there already was a directory rule for 'in', it is replaced.
 
 *-d, --dir=*'in'*=*::
 	Remove a directory rule for the path 'in' inside the sandbox.
 
-By default, all directories are bound read-only and restricted (no devices,
+*-D, --no-default-dirs*::
+	Omit the default set of directory rules (see below). Care has to be taken to specify
+	the correct set of rules (using *--dir*) for the executed program to run
+	correctly. In particular, +/box+ has to be bound.
+
+Unless specified otherwise, all directories are bound read-only and restricted (no devices,
 no setuid binaries). This behavior can be modified using the 'options':
 
 *rw*::
@@ -213,8 +220,9 @@ no setuid binaries). This behavior can be modified using the 'options':
 	Silently ignore the rule if the directory to be bound does not exist.
 
 *fs*::
-	Instead of binding a directory, mount a device-less filesystem called 'in'.
-	For example, this can be 'proc' or 'sysfs'.
+	Instead of binding a directory, mount a device-less filesystem called 'out'.
+	Currently, only the following filesystems are supported:
+	'proc', 'sysfs', 'tmpfs', 'devpts'.
 
 *tmp*::
 	Bind a freshly created temporary directory writeable for the sandbox user.
@@ -224,15 +232,23 @@ no setuid binaries). This behavior can be modified using the 'options':
 	Do not bind recursively. Without this option, mount points in the outside
 	directory tree are automatically propagated to the sandbox.
 
-Unless *--no-default-dirs* is specified, the default set of directory rules binds +/bin+,
-+/dev+ (with devices allowed), +/lib+, +/lib64+ (if it exists), and +/usr+. It also binds
-the working directory to +/box+ (read-write), mounts the proc filesystem at +/proc+, and
-creates a temporary directory +/tmp+.
+Unless *--no-default-dirs* is specified, the following rules are added automatically:
 
-*-D, --no-default-dirs*::
-	Do not bind the default set of directories. Care has to be taken to specify
-	the correct set of rules (using *--dir*) for the executed program to run
-	correctly. In particular, +/box+ has to be bound.
+* +/box+ for the sandbox's working directory (read-write)
+
+* +/bin+ (read-only bind-mount)
+
+* +/dev+ (non-recursive bind-mount with devices allowed)
+
+* +/dev/shm+ (read-write tmpfs)
+
+* +/lib+ and +/lib64+ (read-only bind mount, the latter only if it exists)
+
+* +/proc+ (proc filesystem with only current user's processes visible)
+
+* +/tmp+ (read-write temporary directory)
+
+* +/usr* (read-only bind mount)
 
 The rules are executed in the order in which they are given. Default rules come before
 all user rules. When a rule is replaced, it retains the original position
@@ -299,11 +315,19 @@ The following options can be useful in special cases.
 	and directories) created inside the sandbox. If you need them, this option disables
 	that behavior, but you need to carefully check what you open.
 
+*--syscalls=*'flags'::
+	Override the value of `syscall_flags` from the configuration file for this run. See
+    "System call restrictions" below for a description of what system calls are affected,
+    and the meaning of flags.
+
 *--as-uid=*'uid', *--as-gid=*'gid'::
 	Act on behalf of the specified user and group (only if Isolate was invoked by root).
 	This is used in scenarios where a root-controlled process manages creation of sandboxes
 	for regular users, usually in conjunction with the *restricted_init* option in
 	the configuration file.
+
+*--check-config*::
+	Parse configuration, check that it is valid, and exit.
 
 META-FILES
 ----------
@@ -367,7 +391,7 @@ have to be careful.
 Isolate is designed to run setuid to root. The sub-process inside the sandbox
 then switches to a non-privileged user ID (different for each *--box-id*).
 The range of UIDs available and several filesystem paths are set in a configuration
-file, by default located in /usr/local/etc/isolate.
+file, by default located in {CONFIG_PATH}.
 
 For control group mode:
 
@@ -447,6 +471,55 @@ make sure that you have the memsw controller enabled, so that swap space is
 properly accounted for.
 
 See further suggestions in the https://ioi.github.io/checklist/[IOI Technical Checklist].
+
+SYSTEM CALL RESTRICTIONS
+------------------------
+In general, Isolate does not limit what operations can the sandboxed process do.
+Instead, it places the process within a set of namespaces which restrict what objects
+can be accessed. E.g., it is allowed to create network sockets, but there is nowhere
+else to connect them to.
+
+However, there are a few special cases of objects that are not properly namespaced
+by the Linux kernel. These objects can be exploited to smuggle information between
+two sandboxes running in parallel, or between two instances of the same sandbox running
+one after another.
+
+To avoid such information leaks, Isolate forbids the use of a few system calls.
+This is controlled by the `syscall_flags` setting in the configuration file, or set
+on the command line for a run via `--syscalls`. The value of the setting is a
+sum of the following flags:
+
+* *Keyrings (flag 1)* -- disables the `keyctl` system call which maintains keyrings
+that store cryptographic material. Keyrings can be used to establish system-wide
+or per-user persistent memory, through which data can be passed between successively
+run sandboxes.
+
+* *Virtual machine sockets (flag 2)* -- disables creation of sockets of the `AF_VSOCK`
+address family. These sockets are intended for communication between virtual
+machines and their hypervisors, but their scope is the whole system. Therefore a vsock
+can be used to pass data between two sandboxes running simultaneously.
+
+* *i-node operations (flag 4)* -- when an inode is accessible in multiple sandboxes
+(e.g., as a part of a read-only bind-mount of `/usr`, or even `/proc/self/ns/uts`),
+file locks on it are shared even across mount namespace boundaries. This can be used
+to leak information between simultaneously running sandboxes. This restriction forbids
+`fcntl` with `F_SETLK`, `F_SETLKW`, `F_OFD_SETLK`, `F_OFD_SETLKW`, `F_SETLEASE`, and
+`F_NOTIFY`, and also `flock`. Unlike the previously mentioned system calls, file locks
+could be possibly required by libraries used by legitimate programs.
+
+* *io_uring (flag 8)* -- the io_uring kernel API for asynchronous submission of I/O
+operations also allows creation of sockets with arbitrary address families. Since this
+API is unlikely to be used in programming contests, we disable it completely.
+
+* *legacy architectures (flag 16)* -- on some architectures, the kernel can execute
+code for non-native architectures (e.g., 32-bit binaries on 64-bit systems). This is
+not a security risk per se, but it brings extra complexity to already non-trivial
+system call filtering. Since programming contests seldom use non-native architectures, we
+recommend not allowing them by default and turning this bit off only if necessary.
+At the moment, the only legacy architecture recognized is x86 (i386) on x86_64 (amd64) systems,
+please let us know if you need more.
+
+By default, all restrictions are in place.
 
 LICENSE
 -------

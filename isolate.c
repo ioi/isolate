@@ -1,7 +1,7 @@
 /*
  *	A Process Isolator based on Linux Containers
  *
- *	(c) 2012-2025 Martin Mares <mj@ucw.cz>
+ *	(c) 2012-2026 Martin Mares <mj@ucw.cz>
  *	(c) 2012-2014 Bernard Blackham <bernard@blackham.com.au>
  */
 
@@ -13,7 +13,9 @@
 #include <getopt.h>
 #include <grp.h>
 #include <limits.h>
+#include <linux/sched.h>
 #include <sched.h>
+#include <seccomp.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,21 +29,12 @@
 #include <sys/signal.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 #include <sys/time.h>
 #include <sys/vfs.h>
 #include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
-
-/* May not be defined in older glibc headers */
-#ifndef MS_PRIVATE
-#warning "Working around old glibc: no MS_PRIVATE"
-#define MS_PRIVATE (1 << 18)
-#endif
-#ifndef MS_REC
-#warning "Working around old glibc: no MS_REC"
-#define MS_REC     (1 << 14)
-#endif
 
 /*
  * Theory of operation
@@ -80,7 +73,7 @@ static int silent;
 static int fsize_limit;
 static int memory_limit;
 static int stack_limit;
-static int open_file_limit = 64;
+static int open_file_limit = 1024;
 static int core_limit;
 int block_quota;
 int inode_quota;
@@ -96,6 +89,7 @@ static bool special_files;
 static bool wait_if_busy;
 static int as_uid = -1;
 static int as_gid = -1;
+static int syscall_flags_opt = -1; /* Overrides syscall_flags_cf when != -1 */
 
 int cg_enable;
 int cg_memory_limit;
@@ -161,7 +155,7 @@ lock_write(void)
 }
 
 static bool
-lock_box(bool is_init)
+lock_box(bool is_init, bool is_cleanup)
 {
   if (!dir_exists(cf_lock_root))
     make_dir(cf_lock_root);
@@ -212,7 +206,7 @@ lock_box(bool is_init)
     {
       if (n > 0)
 	{
-	  if (!lock.is_initialized)
+	  if (!lock.is_initialized && !is_cleanup)
 	    die("This box was not initialized properly");
 	  return true;
 	}
@@ -595,7 +589,7 @@ check_timeout(void)
     }
 }
 
-static void
+static void NONRET
 box_keeper(void)
 {
   read_errors_from_fd = error_pipes[0];
@@ -924,14 +918,133 @@ setup_rlimits(void)
 #undef RLIM
 }
 
-static int
+static void
+setup_seccomp(void)
+{
+  /*
+   * For a long time, we were proud that with proper namespacing, all
+   * syscalls can be permitted. Unfortunatly, it is not strictly true
+   * because some syscalls operate on objects that are not namespaced.
+   * We install a simple seccomp filter to disallow these syscalls.
+   */
+
+  int syscall_flags = syscall_flags_opt == -1 ? cf_syscall_flags : syscall_flags_opt;
+
+  if (!syscall_flags)
+    return;
+
+  int err;
+
+  scmp_filter_ctx ctx = seccomp_init(SCMP_ACT_ALLOW);
+  if (!ctx)
+    die("seccomp_init failed");
+
+  /*
+   * Consider allowing syscalls for legacy architectures.
+   */
+  if (!(syscall_flags & CF_SYSCALL_LEGACY_ARCH))
+    {
+      uint32_t native_arch = seccomp_arch_native();
+      if (native_arch == SCMP_ARCH_X86_64)
+	{
+	  if (verbose > 1)
+	    fprintf(stderr, "Seccomp: Adding legacy architecture x86\n");
+	  err = seccomp_arch_add(ctx, SCMP_ARCH_X86);
+	  if (err < 0 && verbose > 1)
+	    fprintf(stderr, "Seccomp: Cannot add architecture: %s", strerror(-err));
+	}
+      else
+	{
+	  if (verbose > 1)
+	    fprintf(stderr, "Seccomp: No legacy architectures known\n");
+	}
+    }
+
+  /*
+   * Disable keyctl(), because it can be used to establish system-wide
+   * persistent memory.
+   */
+  if (syscall_flags & CF_SYSCALL_KEYCTL)
+    {
+      err = seccomp_rule_add(ctx, SCMP_ACT_ERRNO(ENOSYS), SCMP_SYS(keyctl), 0);
+      if (err < 0)
+	die("seccomp_rule_add: %s", strerror(-err));
+    }
+
+  /*
+   * Disable creation of AF_VSOCK sockets, which are not namespaced, so they
+   * can be used to cross boundaries between sandboxes.
+   */
+  if (syscall_flags & CF_SYSCALL_VSOCK)
+    {
+      err = seccomp_rule_add(ctx, SCMP_ACT_ERRNO(EAFNOSUPPORT), SCMP_SYS(socket), 1, SCMP_A0(SCMP_CMP_EQ, AF_VSOCK));
+      if (err < 0)
+	die("seccomp_rule_add: %s", strerror(-err));
+    }
+
+  /*
+   * Disable several fcntl commands which can be used as a side channel
+   * when an inode is shared between sandboxes (even read-only).
+   *
+   * Similarly for flock.
+   */
+  if (syscall_flags & CF_SYSCALL_FCNTL)
+    {
+      static const int fcntl_cmds[] = {
+	  F_SETLK,
+	  F_SETLKW,
+	  F_OFD_SETLK,
+	  F_OFD_SETLKW,
+	  F_SETLEASE,
+	  F_NOTIFY,
+	  -1,
+      };
+      for (int i=0; fcntl_cmds[i] >= 0; i++)
+	{
+	  err = seccomp_rule_add(ctx, SCMP_ACT_ERRNO(EPERM), SCMP_SYS(fcntl), 1, SCMP_A1(SCMP_CMP_EQ, fcntl_cmds[i]));
+	  if (err < 0)
+	    die("seccomp_rule_add: %s", strerror(-err));
+	}
+
+      err = seccomp_rule_add(ctx, SCMP_ACT_ERRNO(ENOSYS), SCMP_SYS(flock), 0);
+      if (err < 0)
+	die("seccomp_rule_add: %s", strerror(-err));
+    }
+
+  /*
+   * Disable io_uring_setup() as the io_uring can be used to create sockets
+   * and it's unlikely to be used in programming contests.
+   */
+  if (syscall_flags & CF_SYSCALL_IO_URING)
+    {
+      err = seccomp_rule_add(ctx, SCMP_ACT_ERRNO(ENOSYS), SCMP_SYS(io_uring_setup), 0);
+      if (err < 0)
+	die("seccomp_rule_add: %s", strerror(-err));
+    }
+
+  if (verbose > 2)
+    {
+      // At verbosity level 3, we log the compiled filter
+      fprintf(stderr, "=== Compiled syscall filter ===\n");
+      err = seccomp_export_pfc(ctx, 2);
+      if (err < 0)
+	die("seccomp_export_pfc: %s", strerror(-err));
+      fprintf(stderr, "=== END ===\n");
+    }
+
+  err = seccomp_load(ctx);
+  if (err < 0)
+    die("seccomp_load: %s", strerror(-err));
+}
+
+static void NONRET
 box_inside(char **args)
 {
-  cg_enter();
   setup_root();
   setup_net();
   setup_rlimits();
   setup_credentials();
+  setup_seccomp();
   setup_fds();
   char **env = setup_environment();
 
@@ -956,11 +1069,9 @@ setup_orig_credentials(void)
     die("setresuid: %m");
 }
 
-static int
-box_proxy(void *arg)
+static void NONRET
+box_proxy(char **args)
 {
-  char **args = arg;
-
   write_errors_to_fd = error_pipes[1];
   close(error_pipes[0]);
   close(status_pipes[0]);
@@ -969,10 +1080,8 @@ box_proxy(void *arg)
   reset_signals();
   netns_enter();
 
-  pid_t inside_pid = fork();
-  if (inside_pid < 0)
-    die("Cannot run process, fork failed: %m");
-  else if (!inside_pid)
+  pid_t inside_pid = cg_fork_and_enter();
+  if (!inside_pid)
     {
       close(status_pipes[1]);
       box_inside(args);
@@ -1056,7 +1165,7 @@ init(void)
   if (cf_restricted_init && !invoked_by_root)
     die("New sandboxes can be created only by root");
 
-  lock_box(true);
+  lock_box(true, false);
 
   do_cleanup();
 
@@ -1082,7 +1191,7 @@ init(void)
 static void
 cleanup(void)
 {
-  if (!lock_box(false))
+  if (!lock_box(false, true))
     msg("Nothing to do -- box did not exist\n");
   else
     {
@@ -1138,10 +1247,10 @@ find_box_pid(void)
   fclose(f);
 }
 
-static void
+static void NONRET
 run(char **argv)
 {
-  if (!lock_box(false))
+  if (!lock_box(false, false))
     die("Box not found, did you run `%s --init'?", self_name());
 
   if (chdir(box_dir) < 0)
@@ -1153,7 +1262,7 @@ run(char **argv)
       close_all_fds();
     }
 
-  chowntree("box", box_uid, box_gid, false);
+  chowntree("box", box_uid, box_gid, special_files);
   cleanup_ownership = 1;
 
   setup_pipe(error_pipes, 1);
@@ -1161,15 +1270,15 @@ run(char **argv)
   setup_signals();
   cg_setup();
 
-  proxy_pid = clone(
-    box_proxy,			// Function to execute as the body of the new process
-    (void*)((uintptr_t)argv & ~(uintptr_t)15),	// Pass our stack, aligned to 16-bytes
-    SIGCHLD | CLONE_NEWIPC | ((share_net || cf_netns_script) ? 0 : CLONE_NEWNET) | CLONE_NEWNS | CLONE_NEWPID,
-    argv);			// Pass the arguments
+  struct clone_args cl_args = {
+    .exit_signal = SIGCHLD,
+    .flags = CLONE_NEWIPC | ((share_net || cf_netns_script) ? 0 : CLONE_NEWNET) | CLONE_NEWNS | CLONE_NEWPID,
+  };
+  proxy_pid = syscall(SYS_clone3, &cl_args, sizeof(cl_args));
   if (proxy_pid < 0)
     die("Cannot run proxy, clone failed: %m");
   if (!proxy_pid)
-    die("Cannot run proxy, clone returned 0");
+    box_proxy(argv);
 
   pid_t box_pid_inside_ns;
   int n = read(status_pipes[0], &box_pid_inside_ns, sizeof(box_pid_inside_ns));
@@ -1202,6 +1311,8 @@ usage(const char *msg, ...)
       va_start(args, msg);
       vfprintf(stderr, msg, args);
       va_end(args);
+      fprintf(stderr, "Try 'isolate' --help' for more information.\n");
+      exit(2);
     }
   printf("\
 Usage: isolate [<options>] <command>\n\
@@ -1235,7 +1346,7 @@ Options:\n\
     --inherit-fds\tInherit all file descriptors of the parent process\n\
 -m, --mem=<size>\tLimit address space to <size> KB\n\
 -M, --meta=<file>\tOutput process information to <file> (name:value)\n\
--n, --open-files=<max>\tLimit number of open files to <max> (default: 64, 0=unlimited)\n\
+-n, --open-files=<max>\tLimit number of open files to <max> (default: 1024, 0=unlimited)\n\
 -q, --quota=<blk>,<ino>\tSet disk quota to <blk> blocks and <ino> inodes\n\
     --share-net\t\tShare network namespace with the parent process\n\
 -s, --silent\t\tDo not print status messages except for fatal errors\n\
@@ -1246,6 +1357,7 @@ Options:\n\
 -i, --stdin=<file>\tRedirect stdin from <file>\n\
 -o, --stdout=<file>\tRedirect stdout to <file>\n\
 -p, --processes[=<max>]\tEnable multiple processes (at most <max> of them); needs --cg\n\
+    --syscalls=<flags>\tSet syscall_flags (see \"System call restrictions\" in man isolate)\n\
 -t, --time=<time>\tSet run time limit (seconds, fractions allowed)\n\
     --tty-hack\t\tAllow interactive programs in the sandbox (see man for caveats)\n\
 -v, --verbose\t\tBe verbose (use multiple times for even more verbosity)\n\
@@ -1256,6 +1368,7 @@ Commands:\n\
     --init\t\tInitialize sandbox (and its control group when --cg is used)\n\
     --run -- <cmd> ...\tRun given command within sandbox\n\
     --cleanup\t\tClean up sandbox\n\
+    --check-config\tCheck configuration file and exit\n\
     --print-cg-root\tPrint the root of cgroup hierarchy\n\
     --version\t\tDisplay program version and configuration\n\
 ");
@@ -1279,6 +1392,8 @@ enum opt_code {
   OPT_AS_UID,
   OPT_AS_GID,
   OPT_PRINT_CG_ROOT,
+  OPT_CHECK_CONFIG,
+  OPT_SYSCALL_FLAGS,
 };
 
 static const char short_opts[] = "b:c:d:DeE:f:i:k:m:M:n:o:p::q:r:st:vw:x:";
@@ -1290,6 +1405,7 @@ static const struct option long_opts[] = {
   { "chdir",		1, NULL, 'c' },
   { "cg",		0, NULL, OPT_CG },
   { "cg-mem",		1, NULL, OPT_CG_MEM },
+  { "check-config",	0, NULL, OPT_CHECK_CONFIG },
   { "cleanup",		0, NULL, OPT_CLEANUP },
   { "core",		1, NULL, OPT_CORE },
   { "dir",		1, NULL, 'd' },
@@ -1315,6 +1431,7 @@ static const struct option long_opts[] = {
   { "stderr-to-stdout",	0, NULL, OPT_STDERR_TO_STDOUT },
   { "stdin",		1, NULL, 'i' },
   { "stdout",		1, NULL, 'o' },
+  { "syscalls",	1, NULL, OPT_SYSCALL_FLAGS },
   { "time",		1, NULL, 't' },
   { "tty-hack",		0, NULL, OPT_TTY_HACK },
   { "verbose",		0, NULL, 'v' },
@@ -1344,6 +1461,7 @@ main(int argc, char **argv)
   int c;
   int require_cg = 0;
   char *sep;
+  const char *err;
   enum opt_code mode = 0;
 
   init_dir_rules();
@@ -1361,8 +1479,9 @@ main(int argc, char **argv)
 	cg_enable = 1;
 	break;
       case 'd':
-	if (!set_dir_action(optarg))
-	  usage("Invalid directory rule specified: %s\n", optarg);
+	err = set_dir_action(optarg);
+	if (err)
+	  usage("Invalid directory rule '%s': %s\n", optarg, err);
 	break;
       case 'D':
         default_dirs = 0;
@@ -1434,6 +1553,7 @@ main(int argc, char **argv)
       case OPT_CLEANUP:
       case OPT_VERSION:
       case OPT_PRINT_CG_ROOT:
+      case OPT_CHECK_CONFIG:
 	if (!mode || (int) mode == c)
 	  mode = c;
 	else
@@ -1471,6 +1591,9 @@ main(int argc, char **argv)
       case OPT_AS_GID:
 	as_gid = opt_uint(optarg);
 	break;
+      case OPT_SYSCALL_FLAGS:
+	syscall_flags_opt = opt_uint(optarg);
+	break;
       default:
 	usage(NULL);
       }
@@ -1480,6 +1603,11 @@ main(int argc, char **argv)
   if (mode == OPT_VERSION)
     {
       show_version();
+      return 0;
+    }
+  if (mode == OPT_CHECK_CONFIG)
+    {
+      cf_parse();
       return 0;
     }
 

@@ -1,7 +1,7 @@
 /*
  *	Process Isolator -- Utility Functions
  *
- *	(c) 2012-2023 Martin Mares <mj@ucw.cz>
+ *	(c) 2012-2026 Martin Mares <mj@ucw.cz>
  *	(c) 2012-2014 Bernard Blackham <bernard@blackham.com.au>
  */
 
@@ -30,7 +30,7 @@ xmalloc(size_t size)
 }
 
 char *
-xstrdup(char *str)
+xstrdup(const char *str)
 {
   char *p = strdup(str);
   if (!p)
@@ -296,6 +296,24 @@ close_all_fds(void)
   closedir(dir);
 }
 
+void
+switch_fsid_to_caller(void)
+{
+  if (setfsuid(getuid()) < 0)
+    die("Failed to switch FS UID: %m");
+  if (setfsgid(getgid()) < 0)
+    die("Failed to switch FS GID: %m");
+}
+
+void
+switch_fsid_back(void)
+{
+  if (setfsuid(geteuid()) < 0)
+    die("Failed to switch FS UID back: %m");
+  if (setfsgid(getegid()) < 0)
+    die("Failed to switch FS GID back: %m");
+}
+
 /*** Meta-files ***/
 
 static FILE *metafile;
@@ -308,11 +326,9 @@ meta_open(const char *name)
       metafile = stdout;
       return;
     }
-  if (setfsuid(getuid()) < 0)
-    die("Failed to switch FS UID: %m");
+  switch_fsid_to_caller();
   metafile = fopen(name, "w");
-  if (setfsuid(geteuid()) < 0)
-    die("Failed to switch FS UID back: %m");
+  switch_fsid_back();
   if (!metafile)
     die("Failed to open metafile '%s'",name);
   keep_fd(fileno(metafile));

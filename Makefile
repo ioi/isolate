@@ -1,9 +1,9 @@
 # Makefile for Isolate
-# (c) 2015--2025 Martin Mares <mj@ucw.cz>
+# (c) 2015--2026 Martin Mares <mj@ucw.cz>
 # (c) 2017 Bernard Blackham <bernard@blackham.com.au>
 
-VERSION=2.2.1
-YEAR=2025
+VERSION=2.7
+YEAR=2026
 
 PROGRAMS=isolate isolate-check-environment isolate-cg-keeper
 MANPAGES=isolate.1 isolate-check-environment.8 isolate-cg-keeper.8
@@ -14,7 +14,7 @@ all: $(PROGRAMS) $(MANPAGES) $(addsuffix .html, $(MANPAGES)) $(CONFIGS)
 CC=gcc
 CFLAGS=-std=gnu99 -O2 -Wall -Wextra -Wno-parentheses -Wno-unused-result -Wno-missing-field-initializers -Wstrict-prototypes -Wmissing-prototypes $(CFLAGS_HARDEN) -D_GNU_SOURCE $(CFLAGS_EXTRA)
 LDFLAGS=$(LDFLAGS_HARDEN)
-LIBS=-lcap
+LIBS=-lcap -lseccomp
 
 # Inspiration: https://best.openssf.org/Compiler-Hardening-Guides/Compiler-Options-Hardening-Guide-for-C-and-C++.html
 CFLAGS_HARDEN=-D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fPIE -pie
@@ -60,19 +60,21 @@ isolate.o: CFLAGS += $(CFLAGS_BUILD)
 config.o: CFLAGS += -DCONFIG_FILE='"$(CONFIG)"'
 isolate-cg-keeper.o: CFLAGS += $(SYSTEMD_CFLAGS)
 
+ASCIIDOC_OPTIONS=-a CONFIG_PATH=$(CONFIG)
+
 %.1: %.1.txt
-	a2x -f manpage $<
+	a2x -f manpage $(ASCIIDOC_OPTIONS) $<
 
 %.8: %.8.txt
-	a2x -f manpage $<
+	a2x -f manpage $(ASCIIDOC_OPTIONS) $<
 
 # The dependency on %.1 is there to serialize both calls of asciidoc,
 # which does not name temporary files safely.
 %.1.html: %.1.txt %.1
-	a2x -f xhtml -D . $<
+	a2x -f xhtml -D . $(ASCIIDOC_OPTIONS) $<
 
 %.8.html: %.8.txt %.8
-	a2x -f xhtml -D . $<
+	a2x -f xhtml -D . $(ASCIIDOC_OPTIONS) $<
 
 %: %.in
 	sed "s|@SBINDIR@|$(SBINDIR)|g; s|@BOXDIR@|$(BOXDIR)|g" <$< >$@

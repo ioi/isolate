@@ -16,6 +16,8 @@
 
 #define CGROUP_FS "/sys/fs/cgroup"
 
+int verbose;	// Not set, but referenced by config.c
+
 void NONRET __attribute__((format(printf,1,2)))
 die(char *msg, ...)
 {
@@ -120,7 +122,7 @@ setup_cg(void)
     }
 
   struct stat st;
-  if (stat(cg, &st), 0)
+  if (stat(cg, &st) < 0)
     die("Control group root %s does not exist: %m", cg);
 
   char subgroup[1024];

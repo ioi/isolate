@@ -1,4 +1,0 @@
-FROM ubuntu:jammy
-
-RUN apt update && apt upgrade -y
-RUN apt install -y --no-install-recommends build-essential debhelper pkg-config libcap-dev libsystemd-dev asciidoc xmlto lintian

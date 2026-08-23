@@ -1,3 +1,95 @@
+Version 2.7  [2026-08-24]
+
+  *  System call restrictions can be set not only in the configuration
+     file, but also using the "--syscall" option.
+
+  *  The default value of the "--open-files" option has been increased
+     from 64 to 1024.
+
+  *  We switched to a different way of putting the new process in
+     a cgroup, which significantly reduced time needed to start the
+     sandbox.
+
+  *  Control group memory limits do not survive between invocations
+     of "isolate --run" on the same sandbox.
+
+  *  We no longer build packages for Ubuntu 22.04.
+
+Version 2.6  [2026-05-25]
+
+  *  /dev/shm is no longer shared among sandboxes. It was never
+     intentional, but it happened when we made all mounts recursive
+     by default and it provided a side channel between sandboxes.
+
+     The default directory rules now bind-mount /dev non-recursively
+     and they mount a fresh instance of tmpfs on /dev/shm.
+
+     Thanks to Gunnar Kreitz <gkreitz@gmail.com> for reporting
+     the problem.
+
+  *  The system call filter disables io_uring by default, since it can
+     be also used to create AF_VSOCK sockets. It is unlikely that there
+     is a competition-related program which requires the uring.
+
+  *  By default, the system call filter rejected syscalls on non-native
+     architectures (e.g., 32-bit syscalls on amd64 systems). We added
+     a flag for allowing legacy architectures.
+
+Version 2.5  [2026-05-01]
+
+  This version fixes several security vulnerabilities discovered
+  by Luca Versari and Google Gemini. None of the vulnerabilities
+  compromises security of the sandbox, but they could be exploited
+  by the user running Isolate to bypass system privilege boundaries.
+
+  *  When opening the meta-file we switched the UID back to the
+     calling user, but not the GID. This could allow the caller to
+     overwrite files that are writeable by the "root" group, or
+     create/rename files in directories writeable by it.
+
+     When evaluating severity of this problem, we looked for such
+     files in typical Linux installations. Only a few cases were
+     found: TeXlive caches, /dev/uinput (which could be possibly
+     used to inject keystrokes), several configuration knobs in /sys
+     (where the content written is unlikely to be syntactically
+     correct) and triggers of removal of PCI devices (which can
+     cause a denial-of-service attack).
+
+  *  Although we dropped privileges properly when bind-mounting a directory,
+     we did not in the preliminary check of existence used with the "maybe"
+     option. This provided an oracle for testing existence of directories
+     behind path components unreachable to the calling user.
+
+  *  Directory rules allowed mounting of arbitrary deviceless
+     filesystems. We are not sure if all of them are safe to expose,
+     so we limit the filesystems to a set of safe ones now. If you need
+     to expand the list, please let us know.
+
+  Besides the security fixes, we improved robustness, error
+  reporting, and documentation at several places.
+
+Version 2.4.1  [2026-04-27]
+
+  *  Fixed a bug in parsing of /etc/sub[ug]id — by mistake,
+     Isolate used /etc/subuid for both user and group IDs.
+
+Version 2.4  [2026-04-26]
+
+  *  A seccomp-based system call filter has been added to thwart
+     several potential information leaks across sandbox boundaries.
+     See "System calls restrictions" in the man page for details.
+
+  *  "isolate --check-config -vv" prints parsed configuration.
+
+Version 2.3  [2026-04-04]
+
+  *  The UID and GID range for the sandboxes is obtained from /etc/sub[ug]ids
+     entries of a configured user. The old method of configuring the
+     ranges explicitly is still supported, but no longer the default.
+
+  *  "isolate --check-config" can be used to verify correctness of the
+     configuration file.
+
 Version 2.2.1  [2025-09-29]
 
   *  Fixed the check for asymmetric cores in isolate-check-environment.

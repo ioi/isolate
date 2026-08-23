@@ -1,12 +1,13 @@
 /*
  *	Process Isolator -- Configuration File
  *
- *	(c) 2016--2025 Martin Mares <mj@ucw.cz>
+ *	(c) 2016--2026 Martin Mares <mj@ucw.cz>
  */
 
 #include "isolate.h"
 
 #include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,12 +17,14 @@
 char *cf_box_root;
 char *cf_lock_root;
 char *cf_cg_root;
+static char *cf_subid_user;
 int cf_first_uid;
 int cf_first_gid;
 int cf_num_boxes;
 int cf_restricted_init;
 char *cf_netns_script;
 int cf_cap_net_raw;
+int cf_syscall_flags = CF_SYSCALL_ALL;
 
 static int line_number;
 static struct cf_per_box *per_box_configs;
@@ -60,6 +63,8 @@ cf_entry_toplevel(char *key, char *val)
     cf_lock_root = cf_string(val);
   else if (!strcmp(key, "cg_root"))
     cf_cg_root = cf_string(val);
+  else if (!strcmp(key, "subid_user"))
+    cf_subid_user = cf_string(val);
   else if (!strcmp(key, "first_uid"))
     cf_first_uid = cf_int(val);
   else if (!strcmp(key, "first_gid"))
@@ -72,6 +77,8 @@ cf_entry_toplevel(char *key, char *val)
     cf_netns_script = cf_string(val);
   else if (!strcmp(key, "cap_net_raw"))
     cf_cap_net_raw = cf_int(val);
+  else if (!strcmp(key, "syscall_flags"))
+    cf_syscall_flags = cf_int(val);
   else
     cf_err("Unknown configuration item");
 }
@@ -105,16 +112,101 @@ cf_entry(char *key, char *val)
     }
 }
 
+static bool
+parse_ugid(const char *src, int *dest)
+{
+  char *end;
+  errno = 0;
+  unsigned long val = strtoul(src, &end, 10);
+  if (errno || end == src || end && *end)
+    return false;
+  if (val > INT_MAX)
+    return false;
+  *dest = val;
+  return true;
+}
+
+static int
+find_subid(const char *sub_file, const char *user, int *num_ids)
+{
+  FILE *f = fopen(sub_file, "r");
+  if (!f)
+    die("Cannot open %s: %m", sub_file);
+
+  char *line = NULL;
+  size_t line_n = 0;
+  while (getline(&line, &line_n, f) >= 0)
+    {
+      char *fields[4];
+      char *c = line;
+      for (uint i=0; i<4; i++)
+	{
+	  fields[i] = c;
+	  while (*c && *c != '\n' && *c != ':')
+	    c++;
+	  if (*c)
+	    *c++ = 0;
+	}
+
+      if (!strcmp(fields[0], user))
+	{
+	  int start;
+	  if (!parse_ugid(fields[1], &start))
+	    die("Cannot parse line for user %s in %s: bad range start", user, sub_file);
+	  if (!parse_ugid(fields[2], num_ids))
+	    die("Cannot parse line for user %s in %s: bad range length", user, sub_file);
+	  fclose(f);
+	  free(line);
+	  return start;
+	}
+    }
+
+  die("User %s not found in %s", user, sub_file);
+}
+
+static void
+cf_find_ids(void)
+{
+  if (cf_subid_user)
+    {
+      if (cf_first_uid || cf_first_gid)
+	die("Configuration must not specify both subid_user and first_uid/first_gid");
+
+      int num_uids, num_gids;
+      cf_first_uid = find_subid("/etc/subuid", cf_subid_user, &num_uids);
+      cf_first_gid = find_subid("/etc/subgid", cf_subid_user, &num_gids);
+
+      if (!cf_num_boxes)
+	cf_num_boxes = (num_uids < num_gids) ? num_uids : num_gids;
+      else
+	{
+	  if (num_uids < cf_num_boxes)
+	    die("Configured num_boxes=%d, but only %d subuids are available", cf_num_boxes, num_uids);
+	  if (num_gids < cf_num_boxes)
+	    die("Configured num_boxes=%d, but only %d subgids are available", cf_num_boxes, num_gids);
+	}
+    }
+  else
+    {
+      if (!cf_num_boxes || !cf_first_uid || !cf_first_gid)
+	die("Configuration must specify either subuid_user, or first_uid/first_gid/num_boxes");
+    }
+}
+
 static void
 cf_check(void)
 {
   if (!cf_box_root ||
       !cf_lock_root ||
-      !cf_cg_root ||
-      !cf_first_uid ||
-      !cf_first_gid ||
-      !cf_num_boxes)
+      !cf_cg_root)
     cf_err("Configuration is not complete");
+
+  if (verbose > 1)
+    {
+      printf("Config: box_root=%s lock_root=%s cg_root=%s\n", cf_box_root, cf_lock_root, cf_cg_root);
+      printf("Config: first_uids=%d first_gid=%d num_boxes=%d\n", cf_first_uid, cf_first_gid, cf_num_boxes);
+      printf("Config: restricted_init=%d syscall_flags=%d\n", cf_restricted_init, cf_syscall_flags);
+    }
 }
 
 void
@@ -151,6 +243,7 @@ cf_parse(void)
     }
 
   fclose(f);
+  cf_find_ids();
   cf_check();
 }
 

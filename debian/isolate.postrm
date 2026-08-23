@@ -3,9 +3,13 @@ set -e
 
 case "$1" in
 remove)
-	if getent group isolate >/dev/null ; then
+	if getent passwd isolate >/dev/null && command -v deluser >/dev/null ; then
+		echo "Removing user isolate"
+		deluser --quiet isolate || true
+	fi
+	if getent group isolate >/dev/null && command -v delgroup >/dev/null ; then
 		echo "Removing group isolate"
-		delgroup --quiet --only-if-empty isolate
+		delgroup --quiet --only-if-empty isolate || true
 	fi
 	if dpkg-statoverride --list /usr/bin/isolate >/dev/null 2>&1 ; then
 		dpkg-statoverride --remove /usr/bin/isolate
