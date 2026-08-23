@@ -1,3 +1,20 @@
+Version 2.7  [2026-08-24]
+
+  *  System call restrictions can be set not only in the configuration
+     file, but also using the "--syscall" option.
+
+  *  The default value of the "--open-files" option has been increased
+     from 64 to 1024.
+
+  *  We switched to a different way of putting the new process in
+     a cgroup, which significantly reduced time needed to start the
+     sandbox.
+
+  *  Control group memory limits do not survive between invocations
+     of "isolate --run" on the same sandbox.
+
+  *  We no longer build packages for Ubuntu 22.04.
+
 Version 2.6  [2026-05-25]
 
   *  /dev/shm is no longer shared among sandboxes. It was never
