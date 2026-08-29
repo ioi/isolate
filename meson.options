@@ -1,0 +1,5 @@
+option(
+	'box_root',
+	type: 'string',
+	value: 'isolate',
+)
