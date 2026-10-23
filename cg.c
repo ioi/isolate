@@ -318,7 +318,7 @@ cg_setup(void)
 
   /*
    *  The box CG can be used by multiple invocations of "isolate --run",
-   *  but cpu.stat is cummulative and cannot be reset. So we subtract
+   *  but cpu.stat is cumulative and cannot be reset. So we subtract
    *  the initial value of cpu.stat.
    */
   cg_time_offset = raw_get_run_time_ms();
